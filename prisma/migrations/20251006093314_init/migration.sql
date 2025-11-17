@@ -9,8 +9,8 @@ CREATE TABLE "User" (
     "status" TEXT NOT NULL DEFAULT 'PENDING',
     "insuranceDepositAmount" REAL,
     "insuranceDepositPaid" REAL NOT NULL DEFAULT 0,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP NOT NULL
 );
 
 -- CreateTable
@@ -23,10 +23,10 @@ CREATE TABLE "Wallet" (
     "dailyLimit" REAL,
     "monthlyLimit" REAL,
     "balance" REAL NOT NULL DEFAULT 0,
-    "lastChecked" DATETIME,
+    "lastChecked" TIMESTAMP,
     "userId" TEXT NOT NULL,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP NOT NULL,
     CONSTRAINT "Wallet_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
@@ -37,8 +37,8 @@ CREATE TABLE "NetworkPair" (
     "toNetworkId" TEXT NOT NULL,
     "profitPercent" REAL NOT NULL,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP NOT NULL,
     CONSTRAINT "NetworkPair_fromNetworkId_fkey" FOREIGN KEY ("fromNetworkId") REFERENCES "Network" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT "NetworkPair_toNetworkId_fkey" FOREIGN KEY ("toNetworkId") REFERENCES "Network" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
 );
@@ -49,9 +49,9 @@ CREATE TABLE "Payment" (
     "amount" REAL NOT NULL,
     "profit" REAL NOT NULL,
     "status" TEXT NOT NULL DEFAULT 'PENDING',
-    "transferTime" DATETIME,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "transferTime" TIMESTAMP,
+    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP NOT NULL,
     "userId" TEXT NOT NULL,
     "walletId" TEXT NOT NULL,
     "networkPairId" TEXT NOT NULL,
@@ -64,8 +64,8 @@ CREATE TABLE "Payment" (
 CREATE TABLE "Session" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "token" TEXT NOT NULL,
-    "expiresAt" DATETIME NOT NULL,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "expiresAt" TIMESTAMP NOT NULL,
+    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "userId" TEXT NOT NULL,
     CONSTRAINT "Session_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
@@ -76,8 +76,8 @@ CREATE TABLE "SupportTicket" (
     "title" TEXT NOT NULL,
     "message" TEXT NOT NULL,
     "status" TEXT NOT NULL DEFAULT 'open',
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP NOT NULL,
     "userId" TEXT NOT NULL,
     CONSTRAINT "SupportTicket_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
@@ -96,8 +96,8 @@ CREATE TABLE "WalletTransaction" (
     "gasPrice" TEXT,
     "fee" REAL NOT NULL DEFAULT 0,
     "status" TEXT NOT NULL DEFAULT 'CONFIRMED',
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP NOT NULL,
     "walletId" TEXT NOT NULL,
     CONSTRAINT "WalletTransaction_walletId_fkey" FOREIGN KEY ("walletId") REFERENCES "Wallet" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
@@ -110,8 +110,8 @@ CREATE TABLE "WalletRequest" (
     "type" TEXT NOT NULL DEFAULT 'RECEIVE',
     "status" TEXT NOT NULL DEFAULT 'PENDING',
     "description" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP NOT NULL,
     "userId" TEXT NOT NULL,
     CONSTRAINT "WalletRequest_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
@@ -126,8 +126,8 @@ CREATE TABLE "DepositRequest" (
     "adminWalletAddress" TEXT,
     "userWalletAddress" TEXT,
     "transactionHash" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP NOT NULL,
     "userId" TEXT NOT NULL,
     CONSTRAINT "DepositRequest_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
@@ -137,8 +137,8 @@ CREATE TABLE "ReceiveRequest" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "walletId" TEXT NOT NULL,
     "status" TEXT NOT NULL DEFAULT 'PENDING',
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP NOT NULL,
     "userId" TEXT NOT NULL,
     CONSTRAINT "ReceiveRequest_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT "ReceiveRequest_walletId_fkey" FOREIGN KEY ("walletId") REFERENCES "Wallet" ("id") ON DELETE CASCADE ON UPDATE CASCADE
@@ -154,8 +154,8 @@ CREATE TABLE "WithdrawalRequest" (
     "remainingAmount" REAL NOT NULL,
     "profit" REAL,
     "adminNotes" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP NOT NULL,
     "userId" TEXT NOT NULL,
     CONSTRAINT "WithdrawalRequest_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT "WithdrawalRequest_walletId_fkey" FOREIGN KEY ("walletId") REFERENCES "Wallet" ("id") ON DELETE CASCADE ON UPDATE CASCADE
@@ -167,7 +167,7 @@ CREATE TABLE "WalletEarning" (
     "walletId" TEXT NOT NULL,
     "amount" REAL NOT NULL,
     "withdrawalRequestId" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "userId" TEXT NOT NULL,
     CONSTRAINT "WalletEarning_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT "WalletEarning_walletId_fkey" FOREIGN KEY ("walletId") REFERENCES "Wallet" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
@@ -180,8 +180,8 @@ CREATE TABLE "Network" (
     "name" TEXT NOT NULL,
     "displayName" TEXT NOT NULL,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP NOT NULL
 );
 
 -- CreateIndex
