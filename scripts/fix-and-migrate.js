@@ -1,0 +1,40 @@
+const { PrismaClient } = require('@prisma/client')
+const { execSync } = require('child_process')
+
+const prisma = new PrismaClient()
+
+async function fixAndMigrate() {
+  try {
+    console.log('🔧 Исправление состояния миграций...')
+    
+    // Удаляем запись о неудачной миграции
+    try {
+      await prisma.$executeRaw`
+        DELETE FROM "_prisma_migrations" 
+        WHERE migration_name = '20251006093314_init' 
+        AND finished_at IS NULL
+      `
+      console.log('✅ Запись о неудачной миграции удалена')
+    } catch (error) {
+      if (error.code === 'P2021') {
+        console.log('ℹ️ Таблица миграций не существует, создадим её при миграции')
+      } else {
+        console.log('ℹ️ Ошибка при удалении (возможно уже исправлено):', error.message)
+      }
+    }
+    
+    await prisma.$disconnect()
+    
+    console.log('🚀 Применение миграций...')
+    execSync('npx prisma migrate deploy', { stdio: 'inherit' })
+    
+    console.log('✅ Миграции применены успешно!')
+    
+  } catch (error) {
+    console.error('❌ Ошибка:', error)
+    process.exit(1)
+  }
+}
+
+fixAndMigrate()
+
