@@ -12,8 +12,14 @@
 
 ## 🔗 Строка подключения
 
+**Основная (с pooler):**
 ```
-postgresql://neondb_owner:npg_D5Qj8nkXAqhw@ep-frosty-cell-ah2y2ukq-pooler.c-3.us-east-1.aws.neon.tech/dzenpay?sslmode=require&channel_binding=require
+postgresql://neondb_owner:npg_wNSRFKit2J4W@ep-tiny-fire-adh53cx9-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require
+```
+
+**Без pooler (для миграций):**
+```
+postgresql://neondb_owner:npg_wNSRFKit2J4W@ep-tiny-fire-adh53cx9.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require
 ```
 
 ## ⚙️ Настройка для Vercel
@@ -23,8 +29,12 @@ postgresql://neondb_owner:npg_D5Qj8nkXAqhw@ep-frosty-cell-ah2y2ukq-pooler.c-3.us
 **Key:** `DATABASE_URL`  
 **Value:** 
 ```
-postgresql://neondb_owner:npg_D5Qj8nkXAqhw@ep-frosty-cell-ah2y2ukq-pooler.c-3.us-east-1.aws.neon.tech/dzenpay?sslmode=require&channel_binding=require
+postgresql://neondb_owner:npg_wNSRFKit2J4W@ep-tiny-fire-adh53cx9-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require
 ```
+
+**Дополнительные переменные (опционально):**
+- `POSTGRES_PRISMA_URL` - для Prisma миграций
+- `DATABASE_URL_UNPOOLED` - для операций без pooler
 
 **Environments:** Production, Preview, Development (отметьте все)
 
@@ -35,15 +45,30 @@ postgresql://neondb_owner:npg_D5Qj8nkXAqhw@ep-frosty-cell-ah2y2ukq-pooler.c-3.us
 - ✅ Сетевые пары: 12 пар между всеми сетями
 - ✅ Схема базы данных применена
 
-## 🔄 Для локальной разработки
+## 🔄 Инициализация базы данных
 
-Если нужно переключиться на локальную SQLite для разработки, создайте `.env` файл:
+После настройки `.env.local` выполните:
+
+```bash
+# Применить миграции
+npx prisma migrate deploy
+
+# Или для разработки (создаст новую миграцию если нужно)
+npx prisma migrate dev
+
+# Инициализировать данные (создать админа и сети)
+npm run init-db
+
+# Инициализировать сетевые пары
+npm run init-network-pairs
+```
+
+## 🔄 Для локальной разработки (SQLite)
+
+Если нужно переключиться на локальную SQLite для разработки, измените в `.env.local`:
 
 ```env
 DATABASE_URL="file:./prisma/dev.db"
-NEXTAUTH_URL="http://localhost:3000"
-NEXTAUTH_SECRET="your-secret-key-here"
-NODE_ENV="development"
 ```
 
 И выполните:
