@@ -1,37 +1,29 @@
 @echo off
 chcp 65001 >nul
 echo ========================================
-echo Исправление remote и отправка проекта
+echo Исправление и отправка миграции
 echo ========================================
 echo.
 
-echo Удаление старого remote...
-git remote remove origin
+echo Шаг 1: Добавление файла миграции...
+git add prisma/migrations/20251006093314_init/migration.sql
 echo.
 
-echo Добавление нового remote для dzenpay1...
-git remote add origin https://github.com/gizmofsc-cyber/dzenpay1.git
+echo Шаг 2: Создание коммита...
+git commit -m "Fix: Replace DATETIME with TIMESTAMP for PostgreSQL compatibility"
 echo.
 
-echo Проверка remote...
-git remote -v
-echo.
-
-echo Добавление всех изменений...
-git add .
-echo.
-
-echo Создание коммита...
-git commit -m "Update: Changed admin credentials to admin10@gmail.com and removed old repository references"
-echo.
-
-echo Отправка на GitHub (dzenpay1)...
-git push -u origin main --force
+echo Шаг 3: Отправка на GitHub...
+git push origin main
 echo.
 
 echo ========================================
-echo Готово! Проект отправлен в:
-echo https://github.com/gizmofsc-cyber/dzenpay1
+echo Готово! Исправление отправлено.
+echo ========================================
+echo.
+echo После деплоя на Vercel:
+echo 1. Миграция должна пройти успешно
+echo 2. Вызовите: https://dzenpay.vercel.app/api/init-database
+echo    для инициализации базы данных
 echo ========================================
 pause
-

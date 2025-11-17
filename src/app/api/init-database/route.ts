@@ -19,6 +19,19 @@ export async function POST(request: NextRequest) {
 
     console.log('🔄 Начинаем инициализацию базы данных...')
 
+    // 0. Исправляем состояние миграций (если есть неудачные)
+    try {
+      await prisma.$executeRaw`
+        DELETE FROM "_prisma_migrations" 
+        WHERE migration_name = '20251006093314_init' 
+        AND finished_at IS NULL
+      `
+      console.log('✅ Исправлено состояние миграций')
+    } catch (error: any) {
+      // Игнорируем ошибки, если таблица не существует или уже исправлена
+      console.log('ℹ️ Состояние миграций:', error.message)
+    }
+
     // 1. Проверяем, есть ли уже админ
     const existingAdmin = await prisma.user.findFirst({
       where: { role: 'ADMIN' }
