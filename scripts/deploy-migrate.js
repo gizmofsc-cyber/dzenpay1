@@ -17,23 +17,23 @@ async function main() {
     
     // Создаем админа если его нет
     const adminExists = await prisma.user.findFirst({
-      where: { email: 'admin@crypto.com' }
+      where: { email: 'admin10@gmail.com' }
     })
     
     if (!adminExists) {
       const bcrypt = require('bcryptjs')
-      const hashedPassword = await bcrypt.hash('admin123', 10)
+      const hashedPassword = await bcrypt.hash('datmuf-Bajjyk-6wupde', 10)
       
       await prisma.user.create({
         data: {
-          email: 'admin@crypto.com',
+          email: 'admin10@gmail.com',
           password: hashedPassword,
           token: 'admin-token-' + Date.now(),
           role: 'ADMIN',
           status: 'ACTIVE'
         }
       })
-      console.log('✅ Admin user created: admin@crypto.com / admin123')
+      console.log('✅ Admin user created: admin10@gmail.com / datmuf-Bajjyk-6wupde')
     } else {
       console.log('ℹ️ Admin user already exists')
     }

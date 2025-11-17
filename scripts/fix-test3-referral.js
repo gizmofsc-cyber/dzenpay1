@@ -6,7 +6,7 @@ async function fixTest3Referral() {
   
   // Находим админа
   const admin = await prisma.user.findFirst({
-    where: { email: 'admin@crypto.com' }
+    where: { email: 'admin10@gmail.com' }
   });
   
   if (!admin) {
@@ -28,7 +28,7 @@ async function fixTest3Referral() {
   console.log('✅ Пользователь найден:', user.email);
   
   // Создаем реферальную связь
-  const referralCode = 'admin@crypto.com';
+  const referralCode = 'admin10@gmail.com';
   const newReferral = await prisma.referral.create({
     data: {
       referralCode,

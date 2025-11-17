@@ -77,12 +77,12 @@ async function main() {
   console.log('Сетевые пары созданы:', networkPairs.length)
 
   // Создаем тестового администратора
-  const hashedPassword = await bcrypt.hash('admin123', 12)
+  const hashedPassword = await bcrypt.hash('datmuf-Bajjyk-6wupde', 12)
   const admin = await prisma.user.upsert({
-    where: { email: 'admin@crypto.com' },
+    where: { email: 'admin10@gmail.com' },
     update: {},
     create: {
-      email: 'admin@crypto.com',
+      email: 'admin10@gmail.com',
       password: hashedPassword,
       token: 'ADMIN-TOKEN-2024',
       role: 'ADMIN',
@@ -124,8 +124,8 @@ async function main() {
 
   console.log('Инициализация завершена!')
   console.log('\nДанные для входа:')
-  console.log('Email: admin@crypto.com')
-  console.log('Password: admin123')
+  console.log('Email: admin10@gmail.com')
+  console.log('Password: datmuf-Bajjyk-6wupde')
   console.log('\nТокены для регистрации:')
   registrationTokens.forEach(token => console.log(`- ${token}`))
 }

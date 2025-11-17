@@ -11,7 +11,7 @@ async function resetDatabase() {
     await prisma.user.deleteMany({
       where: {
         NOT: {
-          email: 'admin@crypto.com'
+          email: 'admin10@gmail.com'
         }
       }
     })
@@ -49,7 +49,7 @@ async function resetDatabase() {
     // Сбрасываем страховые депозиты админа
     console.log('12. Сбрасываем страховые депозиты админа...')
     await prisma.user.update({
-      where: { email: 'admin@crypto.com' },
+      where: { email: 'admin10@gmail.com' },
       data: {
         insuranceDepositAmount: null,
         insuranceDepositPaid: 0,
@@ -58,7 +58,7 @@ async function resetDatabase() {
     })
     
     console.log('✅ База данных успешно сброшена!')
-    console.log('📊 Сохранен только админ: admin@crypto.com')
+    console.log('📊 Сохранен только админ: admin10@gmail.com')
     
   } catch (error) {
     console.error('❌ Ошибка при сбросе базы данных:', error)

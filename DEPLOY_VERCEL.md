@@ -62,8 +62,8 @@ npm run vercel:init
 После инициализации базы данных:
 
 **Администратор:**
-- Email: `admin@crypto.com`
-- Password: `admin123`
+- Email: `admin10@gmail.com`
+- Password: `datmuf-Bajjyk-6wupde`
 
 **Токены для регистрации:**
 - `TOKEN-001-2024`
