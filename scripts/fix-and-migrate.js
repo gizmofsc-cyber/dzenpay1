@@ -7,14 +7,13 @@ async function fixAndMigrate() {
   try {
     console.log('🔧 Исправление состояния миграций...')
     
-    // Удаляем запись о неудачной миграции
+    // Удаляем все записи о неудачных миграциях
     try {
-      await prisma.$executeRaw`
+      const result = await prisma.$executeRaw`
         DELETE FROM "_prisma_migrations" 
-        WHERE migration_name = '20251006093314_init' 
-        AND finished_at IS NULL
+        WHERE finished_at IS NULL
       `
-      console.log('✅ Запись о неудачной миграции удалена')
+      console.log('✅ Записи о неудачных миграциях удалены')
     } catch (error) {
       if (error.code === 'P2021') {
         console.log('ℹ️ Таблица миграций не существует, создадим её при миграции')
