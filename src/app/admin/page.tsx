@@ -2587,10 +2587,20 @@ export default function AdminPanel() {
                     onChange={(e) => setWalletForm(prev => ({ ...prev, network: e.target.value }))}
                     className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
                   >
-                    <option value="TRC20">TRC20 (Tron)</option>
-                    <option value="BEP20">BEP20 (Binance Smart Chain)</option>
-                    <option value="ERC20">ERC20 (Ethereum)</option>
-                    <option value="POLYGON">POLYGON</option>
+                    {networks.filter(n => n.isActive).length > 0 ? (
+                      networks.filter(n => n.isActive).map((network) => (
+                        <option key={network.id} value={network.name}>
+                          {network.displayName || network.name}
+                        </option>
+                      ))
+                    ) : (
+                      <>
+                        <option value="TRC20">TRC20 (Tron)</option>
+                        <option value="BEP20">BEP20 (Binance Smart Chain)</option>
+                        <option value="ERC20">ERC20 (Ethereum)</option>
+                        <option value="POLYGON">POLYGON</option>
+                      </>
+                    )}
                   </select>
                 </div>
 
@@ -2668,10 +2678,20 @@ export default function AdminPanel() {
                     onChange={(e) => setWalletForm(prev => ({ ...prev, network: e.target.value }))}
                     className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
                   >
-                    <option value="TRC20">TRC20 (Tron)</option>
-                    <option value="BEP20">BEP20 (Binance Smart Chain)</option>
-                    <option value="ERC20">ERC20 (Ethereum)</option>
-                    <option value="POLYGON">POLYGON</option>
+                    {networks.filter(n => n.isActive).length > 0 ? (
+                      networks.filter(n => n.isActive).map((network) => (
+                        <option key={network.id} value={network.name}>
+                          {network.displayName || network.name}
+                        </option>
+                      ))
+                    ) : (
+                      <>
+                        <option value="TRC20">TRC20 (Tron)</option>
+                        <option value="BEP20">BEP20 (Binance Smart Chain)</option>
+                        <option value="ERC20">ERC20 (Ethereum)</option>
+                        <option value="POLYGON">POLYGON</option>
+                      </>
+                    )}
                   </select>
                 </div>
               </div>

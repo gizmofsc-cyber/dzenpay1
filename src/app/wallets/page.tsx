@@ -428,8 +428,8 @@ export default function WalletsPage() {
     }
 
     const amount = parseFloat(withdrawalAmount)
-    if (amount > userBalance) {
-      toast.error('Недостаточно средств на балансе')
+    if (amount > Math.max(0, availableBalance)) {
+      toast.error('Недостаточно средств на балансе (учитывается страховой депозит)')
       return
     }
 
@@ -475,7 +475,12 @@ export default function WalletsPage() {
   }
 
   const totalBalance = wallets.reduce((sum, wallet) => sum + wallet.balance, 0)
+  const insuranceBalance = insuranceDeposit?.insuranceDepositPaid || 0
+  const totalBalanceWithInsurance = totalBalance + insuranceBalance
   const activeWallets = wallets.filter(wallet => wallet.status === 'ACTIVE').length
+  
+  // Доступный баланс для вывода (весь баланс кроме страхового)
+  const availableBalance = totalBalance - insuranceBalance
 
   return (
     <Layout>
@@ -705,15 +710,15 @@ export default function WalletsPage() {
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Средний баланс</CardTitle>
+                <CardTitle className="text-sm font-medium">Общий баланс</CardTitle>
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-green-600">
-                  {formatCurrency(wallets.length > 0 ? totalBalance / wallets.length : 0)}
+                  {formatCurrency(totalBalanceWithInsurance)}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  На кошелек
+                  Все кошельки + страховой депозит
                 </p>
               </CardContent>
             </Card>
@@ -898,7 +903,10 @@ export default function WalletsPage() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm text-green-600 font-medium">Доступный баланс</p>
-                        <p className="text-2xl font-bold text-green-800">{userBalance.toFixed(2)} USDT</p>
+                        <p className="text-2xl font-bold text-green-800">{formatCurrency(Math.max(0, availableBalance))}</p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Общий баланс: {formatCurrency(totalBalance)} • Страховой: {formatCurrency(insuranceBalance)}
+                        </p>
                       </div>
                       <div className="text-green-600">
                         <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
@@ -948,7 +956,7 @@ export default function WalletsPage() {
                       type="number"
                       step="0.01"
                       min="0"
-                      max={userBalance}
+                      max={Math.max(0, availableBalance)}
                       value={newWallet.dailyLimit}
                       onChange={(e) => setNewWallet({ ...newWallet, dailyLimit: e.target.value })}
                       placeholder="Введите сумму для вывода"
@@ -956,7 +964,7 @@ export default function WalletsPage() {
                       required
                     />
                     <p className="text-xs text-gray-400 mt-1">
-                      Доступно: {userBalance.toFixed(2)} USDT
+                      Доступно: {formatCurrency(Math.max(0, availableBalance))}
                     </p>
                   </div>
 
@@ -1545,10 +1553,13 @@ export default function WalletsPage() {
                 </div>
                 
                 <div>
-                  <Label className="text-gray-700 mb-2 block">Ваш баланс</Label>
+                  <Label className="text-gray-700 mb-2 block">Доступный баланс</Label>
                   <div className="p-3 bg-green-50 rounded-lg mb-4">
                     <p className="text-lg font-semibold text-green-800">
-                      {userBalance.toFixed(2)} USDT
+                      {formatCurrency(Math.max(0, availableBalance))}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Общий: {formatCurrency(totalBalance)} • Страховой: {formatCurrency(insuranceBalance)}
                     </p>
                   </div>
                 </div>
@@ -1560,7 +1571,7 @@ export default function WalletsPage() {
                     type="number"
                     step="0.01"
                     min="0"
-                    max={userBalance}
+                    max={Math.max(0, availableBalance)}
                     value={withdrawalAmount}
                     onChange={(e) => setWithdrawalAmount(e.target.value)}
                     placeholder="Введите сумму"
@@ -1573,7 +1584,7 @@ export default function WalletsPage() {
                       type="button"
                       size="sm"
                       variant="outline"
-                      onClick={() => setWithdrawalAmount((userBalance * 0.25).toFixed(2))}
+                      onClick={() => setWithdrawalAmount((Math.max(0, availableBalance) * 0.25).toFixed(2))}
                       className="text-xs"
                     >
                       25%
@@ -1582,7 +1593,7 @@ export default function WalletsPage() {
                       type="button"
                       size="sm"
                       variant="outline"
-                      onClick={() => setWithdrawalAmount((userBalance * 0.5).toFixed(2))}
+                      onClick={() => setWithdrawalAmount((Math.max(0, availableBalance) * 0.5).toFixed(2))}
                       className="text-xs"
                     >
                       50%
@@ -1591,7 +1602,7 @@ export default function WalletsPage() {
                       type="button"
                       size="sm"
                       variant="outline"
-                      onClick={() => setWithdrawalAmount((userBalance * 0.75).toFixed(2))}
+                      onClick={() => setWithdrawalAmount((Math.max(0, availableBalance) * 0.75).toFixed(2))}
                       className="text-xs"
                     >
                       75%
@@ -1600,7 +1611,7 @@ export default function WalletsPage() {
                       type="button"
                       size="sm"
                       variant="outline"
-                      onClick={() => setWithdrawalAmount(userBalance.toFixed(2))}
+                      onClick={() => setWithdrawalAmount(Math.max(0, availableBalance).toFixed(2))}
                       className="text-xs"
                     >
                       Все
