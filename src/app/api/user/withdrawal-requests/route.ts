@@ -74,11 +74,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Wallet not found or not available for withdrawal' }, { status: 404 })
     }
 
-    // Проверяем баланс пользователя (только кошельки для вывода, не страховой депозит)
+    // Проверяем баланс пользователя (только кошельки для пополнения RECEIVE, не страховой депозит и не WITHDRAWAL)
     const userWallets = await prisma.wallet.findMany({
       where: { 
         userId: user.id,
-        type: 'WITHDRAWAL' // Только кошельки для вывода
+        type: 'RECEIVE' // Только кошельки для пополнения
       },
       select: { balance: true }
     })
@@ -146,13 +146,13 @@ export async function POST(request: NextRequest) {
         }
       })
 
-      // Списываем средства с кошельков пользователя (исключая кошелек для пополнения - страховой депозит)
+      // Списываем средства с кошельков для пополнения (RECEIVE), исключая страховой депозит (DEPOSIT) и кошельки для вывода (WITHDRAWAL)
       let remainingAmount = amount
       const userWalletsForDeduction = await tx.wallet.findMany({
         where: { 
           userId: user.id,
           balance: { gt: 0 },
-          type: 'WITHDRAWAL' // Только кошельки для вывода, не страховой депозит
+          type: 'RECEIVE' // Только кошельки для пополнения, не страховой депозит и не WITHDRAWAL
         },
         orderBy: { balance: 'desc' }
       })

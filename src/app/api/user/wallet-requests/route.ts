@@ -202,12 +202,13 @@ export async function POST(request: NextRequest) {
           }
         })
 
-        // Списываем средства с кошельков пользователя
+        // Списываем средства с кошельков для пополнения (RECEIVE), исключая страховой депозит (DEPOSIT) и кошельки для вывода (WITHDRAWAL)
         let remainingAmount = amount
         const userWalletsForDeduction = await tx.wallet.findMany({
           where: {
             userId: user.id,
-            balance: { gt: 0 }
+            balance: { gt: 0 },
+            type: 'RECEIVE' // Только кошельки для пополнения, не страховой депозит и не WITHDRAWAL
           },
           orderBy: { balance: 'desc' }
         })

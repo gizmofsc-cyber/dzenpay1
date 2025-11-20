@@ -163,6 +163,10 @@ export default function AdminPanel() {
   const [newDepositRequest, setNewDepositRequest] = useState<any>(null)
   const [previousDepositRequestsCount, setPreviousDepositRequestsCount] = useState(0)
   const [processedDepositRequestIds, setProcessedDepositRequestIds] = useState<Set<string>>(new Set())
+  const [showWithdrawalNotification, setShowWithdrawalNotification] = useState(false)
+  const [newWithdrawalRequest, setNewWithdrawalRequest] = useState<any>(null)
+  const [previousWithdrawalRequestsCount, setPreviousWithdrawalRequestsCount] = useState(0)
+  const [processedWithdrawalRequestIds, setProcessedWithdrawalRequestIds] = useState<Set<string>>(new Set())
   const [activeTab, setActiveTab] = useState<'users' | 'wallets' | 'tokens' | 'wallet-requests' | 'network-pairs' | 'stats' | 'metrics' | 'insurance-deposits' | 'withdrawal-requests' | 'networks' | 'support'>('users')
   const [showAddWalletModal, setShowAddWalletModal] = useState(false)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
@@ -492,6 +496,18 @@ export default function AdminPanel() {
         }
       })
       setProcessedDepositRequestIds(processedIds)
+      
+      const initialWithdrawalCount = withdrawalRequests.filter((req: any) => req.status === 'PENDING').length
+      setPreviousWithdrawalRequestsCount(initialWithdrawalCount)
+      
+      // Инициализируем список обработанных запросов на вывод
+      const processedWithdrawalIds = new Set<string>()
+      withdrawalRequests.forEach((req: any) => {
+        if (req.status === 'PENDING') {
+          processedWithdrawalIds.add(req.id)
+        }
+      })
+      setProcessedWithdrawalRequestIds(processedWithdrawalIds)
     }, 1000)
   }, [])
 
@@ -582,6 +598,47 @@ export default function AdminPanel() {
     
     return () => clearInterval(interval)
   }, [showDepositNotification, previousDepositRequestsCount, processedDepositRequestIds])
+
+  // Периодическая проверка новых запросов на вывод
+  useEffect(() => {
+    const checkNewWithdrawalRequests = async () => {
+      try {
+        const response = await fetch('/api/admin/withdrawal-requests')
+        if (response.ok) {
+          const data = await response.json()
+          const newRequests = data.withdrawalRequests || []
+          const pendingRequests = newRequests.filter((req: any) => req.status === 'PENDING')
+          const currentCount = pendingRequests.length
+          
+          // Находим новые запросы со статусом PENDING, которые еще не были показаны
+          const newRequest = pendingRequests.find((req: any) => 
+            !processedWithdrawalRequestIds.has(req.id)
+          )
+          
+          if (newRequest && !showWithdrawalNotification && currentCount > previousWithdrawalRequestsCount) {
+            // Появился новый запрос на вывод, который еще не был показан
+            setNewWithdrawalRequest(newRequest)
+            setShowWithdrawalNotification(true)
+            setProcessedWithdrawalRequestIds(prev => {
+              const newSet = new Set(prev)
+              newSet.add(newRequest.id)
+              return newSet
+            })
+            setWithdrawalRequests(newRequests)
+          }
+          
+          setPreviousWithdrawalRequestsCount(currentCount)
+        }
+      } catch (error) {
+        console.error('Ошибка проверки новых запросов на вывод:', error)
+      }
+    }
+
+    // Проверяем каждые 5 секунд
+    const interval = setInterval(checkNewWithdrawalRequests, 5000)
+    
+    return () => clearInterval(interval)
+  }, [showWithdrawalNotification, previousWithdrawalRequestsCount, processedWithdrawalRequestIds])
 
   const handleActivateUser = async (userId: string) => {
     try {
@@ -4119,6 +4176,78 @@ export default function AdminPanel() {
                 onClick={() => {
                   setShowDepositNotification(false)
                   setNewDepositRequest(null)
+                }}
+                variant="outline"
+                className="w-full sm:w-auto border-gray-600 text-gray-300 hover:bg-gray-800"
+              >
+                Закрыть
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Уведомление о новом запросе на вывод */}
+      {showWithdrawalNotification && newWithdrawalRequest && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900 border-2 border-blue-500 rounded-lg shadow-2xl w-full max-w-md p-6">
+            <div className="flex items-center space-x-3 mb-4">
+              <DollarSign className="h-8 w-8 text-blue-500 animate-pulse" />
+              <h3 className="text-2xl font-bold text-white">Новый запрос на вывод!</h3>
+            </div>
+            
+            <div className="space-y-4 mb-6">
+              <div className="p-4 bg-blue-900/20 rounded-lg border border-blue-500/30">
+                <p className="text-lg font-semibold text-white mb-2">
+                  Пользователь запросил вывод средств
+                </p>
+                <p className="text-sm text-gray-300">
+                  <span className="font-medium">Пользователь:</span> {newWithdrawalRequest.user?.email || 'Не указан'} {newWithdrawalRequest.user?.telegram && `(@${newWithdrawalRequest.user.telegram})`}
+                </p>
+                {newWithdrawalRequest.wallet && (
+                  <>
+                    <p className="text-sm text-gray-300 mt-1">
+                      <span className="font-medium">Сеть:</span> {newWithdrawalRequest.wallet.network}
+                    </p>
+                    <p className="text-sm text-gray-300 mt-1">
+                      <span className="font-medium">Адрес для вывода:</span>
+                      <div className="font-mono text-xs bg-gray-800 p-2 rounded mt-1 break-all">
+                        {newWithdrawalRequest.wallet.address || 'Не указан'}
+                      </div>
+                    </p>
+                  </>
+                )}
+                <p className="text-lg font-bold text-blue-400 mt-2">
+                  💰 Сумма: {newWithdrawalRequest.amount} USDT
+                </p>
+              </div>
+              
+              <div className="p-3 bg-yellow-900/30 rounded-lg border border-yellow-500/30">
+                <p className="text-sm text-yellow-300">
+                  <strong>⚠️ Обработайте запрос на вывод средств!</strong>
+                </p>
+                <p className="text-xs text-gray-400 mt-1">
+                  Перейдите в раздел "Запросы на вывод" для обработки запроса
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row sm:justify-end space-y-2 sm:space-y-0 sm:space-x-3">
+              <Button
+                onClick={() => {
+                  setShowWithdrawalNotification(false)
+                  setNewWithdrawalRequest(null)
+                  // Переключаемся на вкладку запросов на вывод
+                  setActiveTab('withdrawal-requests')
+                }}
+                className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                Перейти к запросам на вывод
+              </Button>
+              <Button
+                onClick={() => {
+                  setShowWithdrawalNotification(false)
+                  setNewWithdrawalRequest(null)
                 }}
                 variant="outline"
                 className="w-full sm:w-auto border-gray-600 text-gray-300 hover:bg-gray-800"
