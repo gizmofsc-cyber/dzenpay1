@@ -187,19 +187,63 @@ export async function PATCH(request: NextRequest) {
         if (dailyMatch) dailyLimit = parseFloat(dailyMatch[1])
       }
 
-      const newWallet = await prisma.wallet.create({
-        data: {
-          address: finalWalletAddress,
-          network: walletRequest.network,
-          type: walletRequest.type,
-          userId: walletRequest.userId,
-          status: 'ACTIVE',
-          balance: 0,
-          dailyLimit,
-          minAmount,
-          maxAmount
+      // Создаем базовый объект данных для кошелька
+      const walletData: any = {
+        address: finalWalletAddress,
+        network: walletRequest.network,
+        type: walletRequest.type,
+        userId: walletRequest.userId,
+        status: 'ACTIVE',
+        balance: 0
+      }
+
+      // Добавляем dailyLimit если есть
+      if (dailyLimit !== null) {
+        walletData.dailyLimit = dailyLimit
+      }
+
+      // Пытаемся создать кошелек с новыми полями
+      let newWallet
+      try {
+        // Добавляем новые поля только если они извлечены
+        if (minAmount !== null && !isNaN(minAmount)) {
+          walletData.minAmount = minAmount
         }
-      })
+        if (maxAmount !== null && !isNaN(maxAmount)) {
+          walletData.maxAmount = maxAmount
+        }
+
+        newWallet = await prisma.wallet.create({
+          data: walletData
+        })
+      } catch (error: any) {
+        // Если ошибка связана с отсутствием полей в БД, создаем кошелек без них
+        const errorMessage = String(error?.message || '')
+        const errorCode = String(error?.code || '')
+        
+        const isFieldError = errorMessage.includes('minAmount') || 
+                            errorMessage.includes('maxAmount') || 
+                            errorMessage.includes('Unknown column') ||
+                            (errorMessage.includes('column') && (errorMessage.includes('minAmount') || errorMessage.includes('maxAmount')))
+        
+        if (isFieldError) {
+          console.log('⚠️ Поля minAmount/maxAmount еще не существуют в БД, создаем кошелек без них')
+          console.log('Ошибка:', errorMessage)
+          
+          // Удаляем новые поля и создаем кошелек без них
+          const walletDataWithoutNewFields = { ...walletData }
+          delete walletDataWithoutNewFields.minAmount
+          delete walletDataWithoutNewFields.maxAmount
+          
+          newWallet = await prisma.wallet.create({
+            data: walletDataWithoutNewFields
+          })
+        } else {
+          // Если это другая ошибка, пробрасываем её дальше
+          console.error('❌ Ошибка создания кошелька:', error)
+          throw error
+        }
+      }
 
       return NextResponse.json({ 
         message: 'Запрос одобрен и кошелек создан',
@@ -212,10 +256,20 @@ export async function PATCH(request: NextRequest) {
       message: 'Запрос отклонен',
       walletRequest: updatedRequest
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Admin wallet request update error:', error)
+    console.error('Error details:', {
+      message: error?.message,
+      code: error?.code,
+      meta: error?.meta
+    })
+    
+    // Возвращаем более детальную ошибку для отладки
     return NextResponse.json(
-      { error: 'Внутренняя ошибка сервера' },
+      { 
+        error: 'Внутренняя ошибка сервера',
+        details: process.env.NODE_ENV === 'development' ? error?.message : undefined
+      },
       { status: 500 }
     )
   }

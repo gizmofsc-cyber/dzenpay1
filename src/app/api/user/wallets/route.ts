@@ -31,12 +31,52 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'desc' }
     })
 
+    // Для кошельков типа RECEIVE извлекаем minAmount и maxAmount из WalletRequest
+    const walletsWithLimits = await Promise.all(wallets.map(async (wallet) => {
+      try {
+        if (wallet.type === 'RECEIVE') {
+          // Находим соответствующий WalletRequest по userId, network, type и статусу APPROVED
+          const walletRequest = await prisma.walletRequest.findFirst({
+            where: {
+              userId: user.id,
+              network: wallet.network,
+              type: 'RECEIVE',
+              status: 'APPROVED'
+            },
+            orderBy: { createdAt: 'desc' }
+          })
+
+          if (walletRequest?.description) {
+            // Парсим описание для извлечения minAmount и maxAmount
+            const minMatch = walletRequest.description.match(/Минимальная сумма:\s*([\d.]+)/)
+            const maxMatch = walletRequest.description.match(/Максимальная сумма:\s*([\d.]+)/)
+            
+            return {
+              ...wallet,
+              minAmount: minMatch ? parseFloat(minMatch[1]) : (wallet as any).minAmount || null,
+              maxAmount: maxMatch ? parseFloat(maxMatch[1]) : (wallet as any).maxAmount || null
+            }
+          }
+        }
+        // Если есть поля в кошельке, используем их
+        return {
+          ...wallet,
+          minAmount: (wallet as any).minAmount || null,
+          maxAmount: (wallet as any).maxAmount || null
+        }
+      } catch (error) {
+        console.error('Ошибка при обработке кошелька:', error)
+        // В случае ошибки возвращаем кошелек как есть
+        return wallet
+      }
+    }))
+
     // Вычисляем общую статистику
     const totalBalance = wallets.reduce((sum, wallet) => sum + wallet.balance, 0)
     const activeWallets = wallets.filter(wallet => wallet.status === 'ACTIVE').length
 
     return NextResponse.json({
-      wallets,
+      wallets: walletsWithLimits,
       statistics: {
         totalBalance,
         activeWallets,

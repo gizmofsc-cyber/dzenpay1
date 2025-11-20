@@ -40,11 +40,11 @@ interface Wallet {
   status: string
   dailyLimit: number | null
   monthlyLimit: number | null
-  minAmount: number | null
-  maxAmount: number | null
   balance: number
   lastChecked: string | null
   createdAt: string
+  minAmount?: number | null
+  maxAmount?: number | null
 }
 
 interface WalletTransaction {
