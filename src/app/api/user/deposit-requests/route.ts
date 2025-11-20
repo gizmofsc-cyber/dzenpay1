@@ -85,52 +85,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { amount, fromNetwork, toNetwork } = await request.json()
-
-    if (!amount || !fromNetwork || !toNetwork) {
-      return NextResponse.json(
-        { error: 'Сумма и сети обязательны' },
-        { status: 400 }
-      )
-    }
-
-    if (amount <= 0) {
-      return NextResponse.json(
-        { error: 'Сумма должна быть больше 0' },
-        { status: 400 }
-      )
-    }
-
-    // Находим доступный кошелек админа для пополнения
-    const adminWallet = await prisma.wallet.findFirst({
-      where: {
-        type: 'DEPOSIT',
-        status: 'ACTIVE',
-        network: fromNetwork
-      },
-      include: {
-        user: {
-          select: {
-            email: true,
-            telegram: true
-          }
-        }
-      }
-    })
-
-    if (!adminWallet) {
-      return NextResponse.json(
-        { error: `Нет доступных кошельков для сети ${fromNetwork}` },
-        { status: 400 }
-      )
-    }
-
-    const { requestId, action } = await request.json()
+    // Читаем JSON один раз
+    const body = await request.json()
 
     // Если это уведомление о внесении (action === 'paid')
-    if (action === 'paid' && requestId) {
+    if (body.action === 'paid' && body.requestId) {
       const depositRequest = await prisma.depositRequest.findUnique({
-        where: { id: requestId },
+        where: { id: body.requestId },
         include: {
           user: {
             select: {
@@ -157,7 +118,7 @@ export async function POST(request: NextRequest) {
 
       // Обновляем статус запроса на PROCESSING, чтобы админ увидел уведомление
       await prisma.depositRequest.update({
-        where: { id: requestId },
+        where: { id: body.requestId },
         data: {
           status: 'PROCESSING'
         }
@@ -169,7 +130,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Создание нового запроса на пополнение
-    const { amount, fromNetwork, toNetwork } = await request.json()
+    const { amount, fromNetwork, toNetwork } = body
 
     if (!amount || !fromNetwork || !toNetwork) {
       return NextResponse.json(
