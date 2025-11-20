@@ -1263,6 +1263,46 @@ export default function WalletsPage() {
                     </div>
                   )}
 
+                  {/* Кнопка пополнения - только для RECEIVE */}
+                  {wallet.type === 'RECEIVE' && wallet.status === 'ACTIVE' && wallet.address && (
+                    <div className="pt-4 border-t border-gray-200">
+                      <Button 
+                        onClick={async () => {
+                          try {
+                            const response = await fetch('/api/user/receive-requests', {
+                              method: 'POST',
+                              headers: {
+                                'Content-Type': 'application/json',
+                              },
+                              body: JSON.stringify({
+                                walletId: wallet.id
+                              }),
+                            })
+
+                            if (response.ok) {
+                              const data = await response.json()
+                              toast.success('Запрос на пополнение создан! После перевода средств на указанный адрес администратор проверит транзакцию и начислит баланс.')
+                            } else {
+                              const errorData = await response.json()
+                              toast.error(errorData.error || 'Ошибка создания запроса')
+                            }
+                          } catch (error) {
+                            console.error('Ошибка создания запроса на пополнение:', error)
+                            toast.error('Ошибка создания запроса на пополнение')
+                          }
+                        }}
+                        className="w-full bg-green-600 hover:bg-green-700 text-white"
+                        size="sm"
+                      >
+                        <ArrowDownLeft className="h-4 w-4 mr-2" />
+                        Пополнить
+                      </Button>
+                      <p className="text-xs text-gray-500 mt-2 text-center">
+                        Нажмите эту кнопку после того, как сделаете перевод на указанный адрес. Администратор произведет проверку и начислит вам баланс.
+                      </p>
+                    </div>
+                  )}
+
                   {/* Кнопки действий - только для WITHDRAWAL */}
                   {wallet.type === 'WITHDRAWAL' && (
                     <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 pt-4">
