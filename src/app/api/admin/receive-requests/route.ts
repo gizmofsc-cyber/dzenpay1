@@ -140,16 +140,6 @@ export async function PATCH(request: NextRequest) {
         }
       })
 
-      // Обновляем баланс пользователя
-      await prisma.user.update({
-        where: { id: receiveRequest.userId },
-        data: {
-          balance: {
-            increment: parseFloat(creditAmount.toString())
-          }
-        }
-      })
-
       // Обновляем статус запроса
       const updatedRequest = await prisma.receiveRequest.update({
         where: { id: requestId },
