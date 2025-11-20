@@ -27,8 +27,7 @@ const userNavigation = [
   { name: 'Выплаты', href: '/payments', icon: CreditCard },
   { name: 'Кошельки', href: '/wallets', icon: Wallet },
   { name: 'Доходность', href: '/income', icon: TrendingUp },
-  { name: 'Финансы', href: '/finances', icon: DollarSign },
-  { name: 'Поддержка', href: '/support', icon: HelpCircle },
+  { name: 'Чат с поддержкой', href: '/support', icon: HelpCircle },
 ]
 
 const adminNavigation = [
@@ -37,8 +36,7 @@ const adminNavigation = [
   { name: 'Выплаты', href: '/payments', icon: CreditCard },
   { name: 'Кошельки', href: '/wallets', icon: Wallet },
   { name: 'Доходность', href: '/income', icon: TrendingUp },
-  { name: 'Финансы', href: '/finances', icon: DollarSign },
-  { name: 'Поддержка', href: '/support', icon: HelpCircle },
+  { name: 'Чат с поддержкой', href: '/support', icon: HelpCircle },
 ]
 
 export default function Sidebar() {

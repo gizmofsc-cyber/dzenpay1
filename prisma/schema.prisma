@@ -112,7 +112,7 @@ model SupportTicket {
   id        String   @id @default(cuid())
   title     String
   message   String
-  status    String   @default("open")
+  status    String   @default("open") // "open", "in_progress", "resolved", "closed"
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Layout from '@/components/layout/Layout'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -134,16 +134,35 @@ export default function SupportPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [ticketForm, setTicketForm] = useState({
     title: '',
-    message: '',
-    priority: 'medium'
+    message: ''
   })
-  const [tickets] = useState(mockTickets)
+  const [tickets, setTickets] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
 
   const handleFaqToggle = (id: number) => {
     setActiveFaq(activeFaq === id ? null : id)
   }
 
-  const handleTicketSubmit = (e: React.FormEvent) => {
+  // Загрузка обращений
+  const fetchTickets = async () => {
+    try {
+      const response = await fetch('/api/user/support')
+      if (response.ok) {
+        const data = await response.json()
+        setTickets(data.tickets || [])
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки обращений:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchTickets()
+  }, [])
+
+  const handleTicketSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
     if (!ticketForm.title.trim() || !ticketForm.message.trim()) {
@@ -151,11 +170,27 @@ export default function SupportPage() {
       return
     }
 
-    // Здесь будет отправка тикета на сервер
-    console.log('New ticket:', ticketForm)
-    toast.success('Тикет создан успешно')
-    
-    setTicketForm({ title: '', message: '', priority: 'medium' })
+    try {
+      const response = await fetch('/api/user/support', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(ticketForm),
+      })
+
+      if (response.ok) {
+        toast.success('Обращение создано успешно')
+        setTicketForm({ title: '', message: '' })
+        await fetchTickets()
+      } else {
+        const errorData = await response.json()
+        toast.error(errorData.error || 'Ошибка создания обращения')
+      }
+    } catch (error) {
+      console.error('Ошибка создания обращения:', error)
+      toast.error('Ошибка создания обращения')
+    }
   }
 
   const getStatusColor = (status: string) => {
@@ -332,20 +367,6 @@ export default function SupportPage() {
                 </div>
 
                 <div>
-                  <Label htmlFor="priority">Приоритет</Label>
-                  <select
-                    id="priority"
-                    value={ticketForm.priority}
-                    onChange={(e) => setTicketForm({ ...ticketForm, priority: e.target.value })}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  >
-                    <option value="low">Низкий</option>
-                    <option value="medium">Средний</option>
-                    <option value="high">Высокий</option>
-                  </select>
-                </div>
-
-                <div>
                   <Label htmlFor="message">Сообщение</Label>
                   <textarea
                     id="message"
@@ -375,28 +396,33 @@ export default function SupportPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {tickets.map((ticket) => (
-                  <div key={ticket.id} className="p-3 border rounded-lg">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-medium">{ticket.title}</h4>
-                      <div className="flex items-center space-x-2">
+              {loading ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-500">Загрузка обращений...</p>
+                </div>
+              ) : tickets.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-500">У вас пока нет обращений</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {tickets.map((ticket) => (
+                    <div key={ticket.id} className="p-3 border rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-medium">{ticket.title}</h4>
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(ticket.status)}`}>
                           {getStatusLabel(ticket.status)}
                         </span>
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPriorityColor(ticket.priority)}`}>
-                          {getPriorityLabel(ticket.priority)}
-                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-2 whitespace-pre-wrap">{ticket.message}</p>
+                      <div className="flex items-center justify-between text-xs text-gray-500">
+                        <span>ID: {ticket.id}</span>
+                        <span>{new Date(ticket.createdAt).toLocaleString('ru-RU')}</span>
                       </div>
                     </div>
-                    <p className="text-sm text-gray-600 mb-2">{ticket.lastMessage}</p>
-                    <div className="flex items-center justify-between text-xs text-gray-500">
-                      <span>ID: {ticket.id}</span>
-                      <span>{ticket.createdAt}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

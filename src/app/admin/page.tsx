@@ -23,7 +23,8 @@ import {
   Network,
   X,
   Shield,
-  AlertTriangle
+  AlertTriangle,
+  HelpCircle
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -152,12 +153,13 @@ export default function AdminPanel() {
   const [depositRequests, setDepositRequests] = useState<any[]>([])
   const [withdrawalRequests, setWithdrawalRequests] = useState<WithdrawalRequestAdmin[]>([])
   const [receiveRequests, setReceiveRequests] = useState<any[]>([])
+  const [supportTickets, setSupportTickets] = useState<any[]>([])
   const [networks, setNetworks] = useState<Network[]>([])
   const [loading, setLoading] = useState(true)
   const [showReceiveNotification, setShowReceiveNotification] = useState(false)
   const [newReceiveRequest, setNewReceiveRequest] = useState<any>(null)
   const [previousReceiveRequestsCount, setPreviousReceiveRequestsCount] = useState(0)
-  const [activeTab, setActiveTab] = useState<'users' | 'wallets' | 'tokens' | 'wallet-requests' | 'network-pairs' | 'stats' | 'metrics' | 'insurance-deposits' | 'withdrawal-requests' | 'networks'>('users')
+  const [activeTab, setActiveTab] = useState<'users' | 'wallets' | 'tokens' | 'wallet-requests' | 'network-pairs' | 'stats' | 'metrics' | 'insurance-deposits' | 'withdrawal-requests' | 'networks' | 'support'>('users')
   const [showAddWalletModal, setShowAddWalletModal] = useState(false)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [walletTypeSelection, setWalletTypeSelection] = useState<'select' | 'deposit' | 'receive'>('select')
@@ -415,6 +417,21 @@ export default function AdminPanel() {
           const errorData = await receiveRequestsResponse.json()
           console.error('Ошибка загрузки запросов на пополнение:', errorData)
           setReceiveRequests([])
+        }
+
+        // Загружаем обращения пользователей
+        console.log('Загружаем обращения пользователей...')
+        const supportTicketsResponse = await fetch('/api/admin/support')
+        console.log('Ответ обращений:', supportTicketsResponse.status, supportTicketsResponse.ok)
+        
+        if (supportTicketsResponse.ok) {
+          const supportTicketsData = await supportTicketsResponse.json()
+          console.log('Данные обращений:', supportTicketsData)
+          setSupportTickets(supportTicketsData.tickets || [])
+        } else {
+          const errorData = await supportTicketsResponse.json()
+          console.error('Ошибка загрузки обращений:', errorData)
+          setSupportTickets([])
         }
 
         // Загружаем запросы на вывод
@@ -1452,6 +1469,7 @@ export default function AdminPanel() {
           { id: 'network-pairs', label: 'Сетевые пары', icon: Network },
           { id: 'insurance-deposits', label: 'Страховые депозиты', icon: Shield },
           { id: 'withdrawal-requests', label: 'Запросы на вывод', icon: DollarSign },
+          { id: 'support', label: 'Обращения пользователей', icon: HelpCircle },
           { id: 'metrics', label: 'Метрики', icon: BarChart3 },
           { id: 'stats', label: 'Статистика', icon: Activity }
         ].map(tab => (
@@ -2468,6 +2486,149 @@ export default function AdminPanel() {
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {activeTab === 'support' && (
+        <Card className="neon-card">
+          <CardHeader>
+            <CardTitle className="gradient-text">Обращения пользователей</CardTitle>
+            <CardDescription className="text-gray-300">
+              Управление обращениями пользователей в службу поддержки
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {supportTickets.length === 0 ? (
+                <div className="text-center py-8">
+                  <HelpCircle className="h-12 w-12 text-gray-600 mx-auto mb-4" />
+                  <p className="text-gray-400">Нет обращений</p>
+                </div>
+              ) : (
+                supportTickets.map((ticket: any) => (
+                  <div key={ticket.id} className="p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+                    <div className="flex flex-col md:flex-row md:items-start md:justify-between space-y-3 md:space-y-0">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3 mb-2">
+                          <div className={`w-3 h-3 rounded-full ${
+                            ticket.status === 'open' ? 'bg-red-500' :
+                            ticket.status === 'in_progress' ? 'bg-yellow-500' :
+                            ticket.status === 'resolved' ? 'bg-green-500' : 'bg-gray-500'
+                          }`} />
+                          <div>
+                            <p className="font-medium text-white">{ticket.title}</p>
+                            <p className="text-sm text-gray-400">
+                              {ticket.user?.email || 'Пользователь'} {ticket.user?.telegram && `(${ticket.user.telegram})`}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {new Date(ticket.createdAt).toLocaleString('ru-RU')}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="mt-3 p-3 bg-gray-900/50 rounded-lg">
+                          <p className="text-sm text-gray-300 whitespace-pre-wrap">{ticket.message}</p>
+                        </div>
+                        <div className="mt-2">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            ticket.status === 'open' ? 'bg-red-500/20 text-red-400' :
+                            ticket.status === 'in_progress' ? 'bg-yellow-500/20 text-yellow-400' :
+                            ticket.status === 'resolved' ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'
+                          }`}>
+                            {ticket.status === 'open' ? 'Открыто' :
+                             ticket.status === 'in_progress' ? 'В работе' :
+                             ticket.status === 'resolved' ? 'Решено' : 'Закрыто'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex flex-col space-y-2">
+                        <Input
+                          type="text"
+                          placeholder="Ваш ответ..."
+                          id={`response-${ticket.id}`}
+                          className="bg-gray-800 text-white border-gray-600 min-w-[200px]"
+                        />
+                        <div className="flex space-x-2">
+                          <Button
+                            onClick={async () => {
+                              const responseInput = document.getElementById(`response-${ticket.id}`) as HTMLInputElement
+                              const response = responseInput?.value || ''
+                              
+                              if (!response.trim()) {
+                                toast.error('Введите ответ')
+                                return
+                              }
+
+                              try {
+                                const responseApi = await fetch('/api/admin/support', {
+                                  method: 'PATCH',
+                                  headers: {
+                                    'Content-Type': 'application/json',
+                                  },
+                                  body: JSON.stringify({
+                                    ticketId: ticket.id,
+                                    response: response,
+                                    status: 'in_progress'
+                                  }),
+                                })
+
+                                if (responseApi.ok) {
+                                  toast.success('Ответ отправлен')
+                                  responseInput.value = ''
+                                  window.location.reload()
+                                } else {
+                                  const errorData = await responseApi.json()
+                                  toast.error(errorData.error || 'Ошибка отправки ответа')
+                                }
+                              } catch (error) {
+                                console.error('Ошибка отправки ответа:', error)
+                                toast.error('Ошибка отправки ответа')
+                              }
+                            }}
+                            className="neon-button bg-green-600 hover:bg-green-700"
+                            size="sm"
+                          >
+                            Ответить
+                          </Button>
+                          <Button
+                            onClick={async () => {
+                              try {
+                                const response = await fetch('/api/admin/support', {
+                                  method: 'PATCH',
+                                  headers: {
+                                    'Content-Type': 'application/json',
+                                  },
+                                  body: JSON.stringify({
+                                    ticketId: ticket.id,
+                                    status: 'resolved'
+                                  }),
+                                })
+
+                                if (response.ok) {
+                                  toast.success('Обращение закрыто')
+                                  window.location.reload()
+                                } else {
+                                  const errorData = await response.json()
+                                  toast.error(errorData.error || 'Ошибка закрытия обращения')
+                                }
+                              } catch (error) {
+                                console.error('Ошибка закрытия обращения:', error)
+                                toast.error('Ошибка закрытия обращения')
+                              }
+                            }}
+                            variant="outline"
+                            className="neon-input text-white"
+                            size="sm"
+                          >
+                            Закрыть
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {activeTab === 'stats' && (

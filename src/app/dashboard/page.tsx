@@ -210,6 +210,13 @@ export default function DashboardPage() {
     fetchStats()
     fetchNetworkPairs()
     fetchNetworks()
+    
+    // Периодическая проверка новых связок каждые 10 секунд
+    const interval = setInterval(() => {
+      fetchNetworkPairs()
+    }, 10000)
+    
+    return () => clearInterval(interval)
   }, [])
 
   useEffect(() => {
@@ -424,15 +431,6 @@ export default function DashboardPage() {
                             <span className="status-inactive px-2.5 py-0.5 rounded-full text-xs font-medium">
                               Неактивна
                             </span>
-                          )}
-                          {pair.isActive && (
-                            <Button
-                              size="sm"
-                              onClick={() => handleSelectPair(pair)}
-                              className="neon-button"
-                            >
-                              Выбрать
-                            </Button>
                           )}
                         </div>
                       </div>
