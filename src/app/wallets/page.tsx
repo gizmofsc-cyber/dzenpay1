@@ -1354,12 +1354,12 @@ export default function WalletsPage() {
                           className="w-full bg-green-600 hover:bg-green-700 text-white"
                           size="sm"
                         >
-                          <ArrowDownLeft className="h-4 w-4 mr-2" />
-                          Пополнить
-                        </Button>
-                        <p className="text-xs text-gray-500 mt-2 text-center">
-                          Нажмите эту кнопку после того, как сделаете перевод на указанный адрес. Администратор произведет проверку и начислит вам баланс.
-                        </p>
+                        <ArrowDownLeft className="h-4 w-4 mr-2" />
+                        Пополнил
+                      </Button>
+                      <p className="text-xs text-gray-500 mt-2 text-center">
+                        Нажмите эту кнопку после того, как сделаете перевод на указанный адрес. Администратор произведет проверку и начислит вам баланс.
+                      </p>
                       </div>
                     )
                   })()}

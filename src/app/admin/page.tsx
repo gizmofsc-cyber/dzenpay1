@@ -1519,14 +1519,14 @@ export default function AdminPanel() {
         <div className="space-y-6">
           {/* Запросы на пополнение */}
           {receiveRequests.filter((req: any) => req.status === 'PENDING' || req.status === 'PROCESSING').length > 0 && (
-            <Card className="neon-card border-yellow-500/50 bg-yellow-900/10">
+            <Card className="neon-card border-yellow-500/50 bg-yellow-900/10 shadow-lg shadow-yellow-500/20">
               <CardHeader>
                 <CardTitle className="gradient-text flex items-center space-x-2">
-                  <AlertTriangle className="h-5 w-5 text-yellow-500" />
-                  <span>Запросы на пополнение - требуется проверка</span>
+                  <AlertTriangle className="h-5 w-5 text-yellow-500 animate-pulse" />
+                  <span>Был перевод - проверьте</span>
                 </CardTitle>
                 <CardDescription className="text-gray-300">
-                  Пользователи оплатили на указанную сумму - проверьте кошелек и начислите баланс
+                  Пользователь сообщил о переводе. Проверьте транзакцию и начислите баланс на кошелек
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -1534,24 +1534,31 @@ export default function AdminPanel() {
                   {receiveRequests
                     .filter((req: any) => req.status === 'PENDING' || req.status === 'PROCESSING')
                     .map((request: any) => (
-                      <div key={request.id} className="p-4 bg-yellow-900/20 rounded-lg border border-yellow-500/30">
+                      <div key={request.id} className="p-4 bg-yellow-900/20 rounded-lg border-2 border-yellow-500/50 shadow-md">
                         <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
                           <div className="flex-1">
-                            <div className="flex items-center space-x-3 mb-2">
-                              <div className="w-3 h-3 rounded-full bg-yellow-500 animate-pulse" />
-                              <div>
-                                <p className="font-medium text-white">
-                                  {request.user?.email || 'Пользователь'} {request.user?.telegram && `(${request.user.telegram})`}
-                                </p>
-                                <p className="text-sm text-gray-400">
-                                  Кошелек: {request.wallet?.address || 'Не указан'} • {request.wallet?.network}
-                                </p>
-                                <p className="text-sm font-semibold text-yellow-400 mt-1">
-                                  Сумма пополнения: {request.amount ? `${request.amount} USDT` : 'Не указана'}
-                                </p>
-                                <p className="text-xs text-gray-500 mt-1">
-                                  Создан: {new Date(request.createdAt).toLocaleString('ru-RU')}
-                                </p>
+                            <div className="flex items-start space-x-3 mb-2">
+                              <div className="w-3 h-3 rounded-full bg-yellow-500 animate-pulse mt-1" />
+                              <div className="flex-1">
+                                <div className="mb-2">
+                                  <p className="font-semibold text-white text-lg">
+                                    {request.user?.email || 'Пользователь'} {request.user?.telegram && `(${request.user.telegram})`}
+                                  </p>
+                                </div>
+                                <div className="space-y-1">
+                                  <p className="text-sm text-gray-300">
+                                    <span className="font-medium">Кошелек:</span> {request.wallet?.address || 'Не указан'}
+                                  </p>
+                                  <p className="text-sm text-gray-300">
+                                    <span className="font-medium">Сеть:</span> {request.wallet?.network}
+                                  </p>
+                                  <p className="text-base font-bold text-yellow-400 mt-2">
+                                    💰 Сумма перевода: {request.amount ? `${request.amount} USDT` : 'Не указана'}
+                                  </p>
+                                  <p className="text-xs text-gray-400 mt-2">
+                                    📅 Запрос создан: {new Date(request.createdAt).toLocaleString('ru-RU')}
+                                  </p>
+                                </div>
                               </div>
                             </div>
                           </div>
