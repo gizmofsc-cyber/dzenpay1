@@ -105,7 +105,13 @@ export default function DashboardPage() {
 
   const fetchNetworkPairs = async () => {
     try {
-      const response = await fetch('/api/network-pairs')
+      const response = await fetch('/api/network-pairs', {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      })
       if (response.ok) {
         const data = await response.json()
         console.log('Загружены сетевые пары:', data.networkPairs)
@@ -211,12 +217,21 @@ export default function DashboardPage() {
     fetchNetworkPairs()
     fetchNetworks()
     
-    // Периодическая проверка новых связок каждые 10 секунд
+    // Периодическая проверка новых связок каждые 5 секунд
     const interval = setInterval(() => {
       fetchNetworkPairs()
-    }, 10000)
+    }, 5000)
     
-    return () => clearInterval(interval)
+    // Обновление при фокусе на странице
+    const handleFocus = () => {
+      fetchNetworkPairs()
+    }
+    window.addEventListener('focus', handleFocus)
+    
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('focus', handleFocus)
+    }
   }, [])
 
   useEffect(() => {
