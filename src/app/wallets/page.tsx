@@ -966,7 +966,7 @@ export default function WalletsPage() {
                         <p className="text-sm text-green-600 font-medium">Доступный баланс</p>
                         <p className="text-2xl font-bold text-green-800">{formatCurrency(Math.max(0, availableBalance))}</p>
                         <p className="text-xs text-gray-500 mt-1">
-                          Общий баланс: {formatCurrency(totalBalance)} • Страховой: {formatCurrency(insuranceBalance)}
+                          Общий баланс: {formatCurrency(walletsBalance)} • Страховой: {formatCurrency(insuranceBalance)}
                         </p>
                       </div>
                       <div className="text-green-600">
@@ -1591,7 +1591,7 @@ export default function WalletsPage() {
                       {formatCurrency(Math.max(0, availableBalance))}
                     </p>
                     <p className="text-xs text-gray-500 mt-1">
-                      Общий: {formatCurrency(totalBalance)} • Страховой: {formatCurrency(insuranceBalance)}
+                      Общий: {formatCurrency(walletsBalance)} • Страховой: {formatCurrency(insuranceBalance)}
                     </p>
                   </div>
                 </div>
