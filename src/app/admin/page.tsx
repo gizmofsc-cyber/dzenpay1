@@ -22,7 +22,8 @@ import {
   ArrowDownLeft,
   Network,
   X,
-  Shield
+  Shield,
+  AlertTriangle
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -150,6 +151,7 @@ export default function AdminPanel() {
   const [insuranceDeposits, setInsuranceDeposits] = useState<UserWithInsuranceDeposit[]>([])
   const [depositRequests, setDepositRequests] = useState<any[]>([])
   const [withdrawalRequests, setWithdrawalRequests] = useState<WithdrawalRequestAdmin[]>([])
+  const [receiveRequests, setReceiveRequests] = useState<any[]>([])
   const [networks, setNetworks] = useState<Network[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'users' | 'wallets' | 'tokens' | 'wallet-requests' | 'network-pairs' | 'stats' | 'metrics' | 'insurance-deposits' | 'withdrawal-requests' | 'networks'>('users')
@@ -395,6 +397,21 @@ export default function AdminPanel() {
           const errorData = await depositRequestsResponse.json()
           console.error('Ошибка загрузки запросов на страховые взносы:', errorData)
           setDepositRequests([])
+        }
+
+        // Загружаем запросы на пополнение
+        console.log('Загружаем запросы на пополнение...')
+        const receiveRequestsResponse = await fetch('/api/admin/receive-requests')
+        console.log('Ответ запросов на пополнение:', receiveRequestsResponse.status, receiveRequestsResponse.ok)
+        
+        if (receiveRequestsResponse.ok) {
+          const receiveRequestsData = await receiveRequestsResponse.json()
+          console.log('Данные запросов на пополнение:', receiveRequestsData)
+          setReceiveRequests(receiveRequestsData.receiveRequests || [])
+        } else {
+          const errorData = await receiveRequestsResponse.json()
+          console.error('Ошибка загрузки запросов на пополнение:', errorData)
+          setReceiveRequests([])
         }
 
         // Загружаем запросы на вывод
@@ -1499,22 +1516,158 @@ export default function AdminPanel() {
       )}
 
       {activeTab === 'wallets' && (
-        <Card className="neon-card">
-          <CardHeader>
-            <CardTitle className="gradient-text">Управление кошельками</CardTitle>
-            <CardDescription className="text-gray-300">
-              Назначение кошельков пользователям
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-medium text-white">Назначенные кошельки</h3>
-                <Button className="neon-button">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Добавить кошелек
-                </Button>
-              </div>
+        <div className="space-y-6">
+          {/* Запросы на пополнение */}
+          {receiveRequests.filter((req: any) => req.status === 'PENDING' || req.status === 'PROCESSING').length > 0 && (
+            <Card className="neon-card border-yellow-500/50 bg-yellow-900/10">
+              <CardHeader>
+                <CardTitle className="gradient-text flex items-center space-x-2">
+                  <AlertTriangle className="h-5 w-5 text-yellow-500" />
+                  <span>Запросы на пополнение - требуется проверка</span>
+                </CardTitle>
+                <CardDescription className="text-gray-300">
+                  Пользователи оплатили на указанную сумму - проверьте кошелек и начислите баланс
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {receiveRequests
+                    .filter((req: any) => req.status === 'PENDING' || req.status === 'PROCESSING')
+                    .map((request: any) => (
+                      <div key={request.id} className="p-4 bg-yellow-900/20 rounded-lg border border-yellow-500/30">
+                        <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-3 mb-2">
+                              <div className="w-3 h-3 rounded-full bg-yellow-500 animate-pulse" />
+                              <div>
+                                <p className="font-medium text-white">
+                                  {request.user?.email || 'Пользователь'} {request.user?.telegram && `(${request.user.telegram})`}
+                                </p>
+                                <p className="text-sm text-gray-400">
+                                  Кошелек: {request.wallet?.address || 'Не указан'} • {request.wallet?.network}
+                                </p>
+                                <p className="text-sm font-semibold text-yellow-400 mt-1">
+                                  Сумма пополнения: {request.amount ? `${request.amount} USDT` : 'Не указана'}
+                                </p>
+                                <p className="text-xs text-gray-500 mt-1">
+                                  Создан: {new Date(request.createdAt).toLocaleString('ru-RU')}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+                            <Input
+                              type="number"
+                              step="0.01"
+                              placeholder="Сумма для начисления"
+                              value={request.creditAmount || request.amount || ''}
+                              onChange={(e) => {
+                                const updated = receiveRequests.map((r: any) => 
+                                  r.id === request.id ? { ...r, creditAmount: e.target.value } : r
+                                )
+                                setReceiveRequests(updated)
+                              }}
+                              className="bg-gray-800 text-white border-gray-600 sm:w-32"
+                            />
+                            <Button
+                              onClick={async () => {
+                                const creditAmount = request.creditAmount || request.amount
+                                if (!creditAmount || parseFloat(creditAmount) <= 0) {
+                                  alert('Укажите корректную сумму для начисления')
+                                  return
+                                }
+
+                                try {
+                                  const response = await fetch('/api/admin/receive-requests', {
+                                    method: 'PATCH',
+                                    headers: {
+                                      'Content-Type': 'application/json',
+                                    },
+                                    body: JSON.stringify({
+                                      requestId: request.id,
+                                      action: 'credit',
+                                      amount: parseFloat(creditAmount)
+                                    }),
+                                  })
+
+                                  if (response.ok) {
+                                    toast.success('Баланс успешно начислен!')
+                                    // Перезагружаем данные
+                                    window.location.reload()
+                                  } else {
+                                    const errorData = await response.json()
+                                    toast.error(errorData.error || 'Ошибка начисления баланса')
+                                  }
+                                } catch (error) {
+                                  console.error('Ошибка начисления баланса:', error)
+                                  toast.error('Ошибка начисления баланса')
+                                }
+                              }}
+                              className="neon-button bg-green-600 hover:bg-green-700"
+                              size="sm"
+                            >
+                              <DollarSign className="h-4 w-4 mr-1" />
+                              Начислить
+                            </Button>
+                            <Button
+                              onClick={async () => {
+                                if (!confirm('Вы уверены, что хотите отклонить этот запрос?')) return
+
+                                try {
+                                  const response = await fetch('/api/admin/receive-requests', {
+                                    method: 'PATCH',
+                                    headers: {
+                                      'Content-Type': 'application/json',
+                                    },
+                                    body: JSON.stringify({
+                                      requestId: request.id,
+                                      action: 'reject'
+                                    }),
+                                  })
+
+                                  if (response.ok) {
+                                    toast.success('Запрос отклонен')
+                                    window.location.reload()
+                                  } else {
+                                    const errorData = await response.json()
+                                    toast.error(errorData.error || 'Ошибка отклонения запроса')
+                                  }
+                                } catch (error) {
+                                  console.error('Ошибка отклонения запроса:', error)
+                                  toast.error('Ошибка отклонения запроса')
+                                }
+                              }}
+                              variant="outline"
+                              className="neon-input text-red-400 border-red-500/30 hover:bg-red-900/20"
+                              size="sm"
+                            >
+                              Отклонить
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          <Card className="neon-card">
+            <CardHeader>
+              <CardTitle className="gradient-text">Управление кошельками</CardTitle>
+              <CardDescription className="text-gray-300">
+                Назначение кошельков пользователям
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-medium text-white">Назначенные кошельки</h3>
+                  <Button className="neon-button">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Добавить кошелек
+                  </Button>
+                </div>
               {wallets.map(wallet => (
                 <div key={wallet.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 bg-gray-800/50 rounded-lg border border-gray-700 space-y-3 sm:space-y-0">
                   <div>

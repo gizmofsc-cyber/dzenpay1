@@ -177,6 +177,7 @@ model DepositRequest {
 model ReceiveRequest {
   id          String   @id @default(cuid())
   walletId    String   // ID кошелька пользователя для приема
+  amount      Float?   // Сумма, которую указал пользователь при создании запроса
   status      String   @default("PENDING") // "PENDING", "READY", "PROCESSING", "COMPLETED"
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

@@ -128,6 +128,10 @@ export default function WalletsPage() {
   const [networks, setNetworks] = useState<Array<{id: string, name: string, displayName: string, isActive: boolean}>>([])
   const [confirmedDepositRequests, setConfirmedDepositRequests] = useState<Set<string>>(new Set())
   const [insuranceDepositAcknowledged, setInsuranceDepositAcknowledged] = useState(false)
+  const [receiveRequests, setReceiveRequests] = useState<any[]>([])
+  const [showReplenishModal, setShowReplenishModal] = useState(false)
+  const [selectedWalletForReplenish, setSelectedWalletForReplenish] = useState<Wallet | null>(null)
+  const [replenishAmount, setReplenishAmount] = useState('')
   const [newWallet, setNewWallet] = useState({
     address: '',
     network: '',
@@ -250,6 +254,19 @@ export default function WalletsPage() {
     }
   }
 
+  // Загрузка запросов на пополнение
+  const fetchReceiveRequests = async () => {
+    try {
+      const response = await fetch('/api/user/receive-requests')
+      if (response.ok) {
+        const data = await response.json()
+        setReceiveRequests(data.receiveRequests || [])
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки запросов на пополнение:', error)
+    }
+  }
+
   useEffect(() => {
     fetchWallets()
     fetchWalletRequests()
@@ -258,6 +275,7 @@ export default function WalletsPage() {
     fetchWithdrawalRequests()
     fetchUserBalance()
     fetchNetworks()
+    fetchReceiveRequests()
 
     // Загружаем состояние ознакомления из localStorage
     const acknowledged = localStorage.getItem('insuranceDepositAcknowledged')
@@ -1303,44 +1321,48 @@ export default function WalletsPage() {
                   )}
 
                   {/* Кнопка пополнения - только для RECEIVE */}
-                  {wallet.type === 'RECEIVE' && wallet.status === 'ACTIVE' && wallet.address && (
-                    <div className="pt-4 border-t border-gray-200">
-                      <Button 
-                        onClick={async () => {
-                          try {
-                            const response = await fetch('/api/user/receive-requests', {
-                              method: 'POST',
-                              headers: {
-                                'Content-Type': 'application/json',
-                              },
-                              body: JSON.stringify({
-                                walletId: wallet.id
-                              }),
-                            })
-
-                            if (response.ok) {
-                              const data = await response.json()
-                              toast.success('Запрос на пополнение создан! После перевода средств на указанный адрес администратор проверит транзакцию и начислит баланс.')
-                            } else {
-                              const errorData = await response.json()
-                              toast.error(errorData.error || 'Ошибка создания запроса')
-                            }
-                          } catch (error) {
-                            console.error('Ошибка создания запроса на пополнение:', error)
-                            toast.error('Ошибка создания запроса на пополнение')
-                          }
-                        }}
-                        className="w-full bg-green-600 hover:bg-green-700 text-white"
-                        size="sm"
-                      >
-                        <ArrowDownLeft className="h-4 w-4 mr-2" />
-                        Пополнить
-                      </Button>
-                      <p className="text-xs text-gray-500 mt-2 text-center">
-                        Нажмите эту кнопку после того, как сделаете перевод на указанный адрес. Администратор произведет проверку и начислит вам баланс.
-                      </p>
-                    </div>
-                  )}
+                  {wallet.type === 'RECEIVE' && wallet.status === 'ACTIVE' && wallet.address && (() => {
+                    const activeRequest = receiveRequests.find(
+                      (req: any) => req.walletId === wallet.id && 
+                      (req.status === 'PENDING' || req.status === 'PROCESSING')
+                    )
+                    
+                    if (activeRequest) {
+                      return (
+                        <div className="pt-4 border-t border-gray-200">
+                          <div className="flex items-center justify-center space-x-2 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                            <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-yellow-800">На проверке</p>
+                              <p className="text-xs text-yellow-600">
+                                Сумма: {formatCurrency(activeRequest.amount || 0)} • Ожидайте проверки администратором
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    }
+                    
+                    return (
+                      <div className="pt-4 border-t border-gray-200">
+                        <Button 
+                          onClick={() => {
+                            setSelectedWalletForReplenish(wallet)
+                            setReplenishAmount('')
+                            setShowReplenishModal(true)
+                          }}
+                          className="w-full bg-green-600 hover:bg-green-700 text-white"
+                          size="sm"
+                        >
+                          <ArrowDownLeft className="h-4 w-4 mr-2" />
+                          Пополнить
+                        </Button>
+                        <p className="text-xs text-gray-500 mt-2 text-center">
+                          Нажмите эту кнопку после того, как сделаете перевод на указанный адрес. Администратор произведет проверку и начислит вам баланс.
+                        </p>
+                      </div>
+                    )
+                  })()}
 
                   {/* Кнопки действий - только для WITHDRAWAL */}
                   {wallet.type === 'WITHDRAWAL' && (
@@ -1583,6 +1605,121 @@ export default function WalletsPage() {
                   onClick={handleCreateWithdrawalRequest}
                   className="w-full sm:w-auto"
                   disabled={!withdrawalAmount || parseFloat(withdrawalAmount) <= 0}
+                >
+                  Создать запрос
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Модальное окно для пополнения */}
+        {showReplenishModal && selectedWalletForReplenish && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white p-6 rounded-lg border border-gray-200 w-full max-w-md">
+              <h3 className="text-xl font-bold text-gray-900 mb-4">
+                Создать запрос на пополнение
+              </h3>
+              
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-gray-700">Кошелек</Label>
+                  <div className="p-3 bg-gray-50 rounded-lg">
+                    <p className="font-medium">{selectedWalletForReplenish.address}</p>
+                    <p className="text-sm text-gray-600">{selectedWalletForReplenish.network}</p>
+                  </div>
+                </div>
+
+                {selectedWalletForReplenish.minAmount && (
+                  <div className="p-3 bg-blue-50 rounded-lg">
+                    <p className="text-sm text-blue-800">
+                      <strong>Минимальная сумма:</strong> {formatCurrency(selectedWalletForReplenish.minAmount)}
+                    </p>
+                    {selectedWalletForReplenish.maxAmount && (
+                      <p className="text-sm text-blue-800">
+                        <strong>Максимальная сумма:</strong> {formatCurrency(selectedWalletForReplenish.maxAmount)}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                <div>
+                  <Label htmlFor="replenish-amount" className="text-gray-700">Сумма пополнения (USDT)</Label>
+                  <Input
+                    id="replenish-amount"
+                    type="number"
+                    step="0.01"
+                    min={selectedWalletForReplenish.minAmount || 0}
+                    max={selectedWalletForReplenish.maxAmount || undefined}
+                    value={replenishAmount}
+                    onChange={(e) => setReplenishAmount(e.target.value)}
+                    placeholder="Введите сумму"
+                    className="mt-1"
+                  />
+                  {selectedWalletForReplenish.minAmount && selectedWalletForReplenish.maxAmount && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Диапазон: {formatCurrency(selectedWalletForReplenish.minAmount)} - {formatCurrency(selectedWalletForReplenish.maxAmount)}
+                    </p>
+                  )}
+                </div>
+                
+                <div className="p-3 bg-yellow-50 rounded-lg">
+                  <p className="text-sm text-yellow-800">
+                    <strong>Важно:</strong> После создания запроса переведите указанную сумму на адрес кошелька выше. Администратор проверит транзакцию и начислит баланс.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex flex-col sm:flex-row sm:justify-end space-y-2 sm:space-y-0 sm:space-x-3 mt-6">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setShowReplenishModal(false)
+                    setSelectedWalletForReplenish(null)
+                    setReplenishAmount('')
+                  }}
+                  className="w-full sm:w-auto"
+                >
+                  Отмена
+                </Button>
+                <Button
+                  onClick={async () => {
+                    if (!replenishAmount || parseFloat(replenishAmount) <= 0) {
+                      toast.error('Укажите корректную сумму')
+                      return
+                    }
+
+                    try {
+                      const response = await fetch('/api/user/receive-requests', {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                          walletId: selectedWalletForReplenish.id,
+                          amount: replenishAmount
+                        }),
+                      })
+
+                      if (response.ok) {
+                        toast.success('Запрос на пополнение создан! После перевода средств администратор проверит транзакцию и начислит баланс.')
+                        setShowReplenishModal(false)
+                        setSelectedWalletForReplenish(null)
+                        setReplenishAmount('')
+                        await fetchReceiveRequests()
+                        await fetchWallets()
+                      } else {
+                        const errorData = await response.json()
+                        toast.error(errorData.error || 'Ошибка создания запроса')
+                      }
+                    } catch (error) {
+                      console.error('Ошибка создания запроса на пополнение:', error)
+                      toast.error('Ошибка создания запроса на пополнение')
+                    }
+                  }}
+                  className="w-full sm:w-auto bg-green-600 hover:bg-green-700"
+                  disabled={!replenishAmount || parseFloat(replenishAmount) <= 0}
                 >
                   Создать запрос
                 </Button>

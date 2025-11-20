@@ -79,18 +79,18 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
-    const { id, status } = await request.json()
+    const { requestId, action, amount } = await request.json()
 
-    if (!id || !status) {
+    if (!requestId || !action) {
       return NextResponse.json(
-        { error: 'ID и статус обязательны' },
+        { error: 'ID запроса и действие обязательны' },
         { status: 400 }
       )
     }
 
-    const receiveRequest = await prisma.receiveRequest.update({
-      where: { id },
-      data: { status },
+    // Получаем запрос
+    const receiveRequest = await prisma.receiveRequest.findUnique({
+      where: { id: requestId },
       include: {
         user: {
           select: {
@@ -105,16 +105,114 @@ export async function PATCH(request: NextRequest) {
             address: true,
             network: true,
             type: true,
-            status: true
+            status: true,
+            balance: true
           }
         }
       }
     })
 
-    return NextResponse.json({
-      message: 'Статус запроса обновлен',
-      receiveRequest
-    })
+    if (!receiveRequest) {
+      return NextResponse.json(
+        { error: 'Запрос не найден' },
+        { status: 404 }
+      )
+    }
+
+    if (action === 'credit') {
+      // Начисление баланса
+      const creditAmount = amount || receiveRequest.amount
+
+      if (!creditAmount || parseFloat(creditAmount.toString()) <= 0) {
+        return NextResponse.json(
+          { error: 'Укажите корректную сумму для начисления' },
+          { status: 400 }
+        )
+      }
+
+      // Обновляем баланс кошелька
+      await prisma.wallet.update({
+        where: { id: receiveRequest.walletId },
+        data: {
+          balance: {
+            increment: parseFloat(creditAmount.toString())
+          }
+        }
+      })
+
+      // Обновляем баланс пользователя
+      await prisma.user.update({
+        where: { id: receiveRequest.userId },
+        data: {
+          balance: {
+            increment: parseFloat(creditAmount.toString())
+          }
+        }
+      })
+
+      // Обновляем статус запроса
+      const updatedRequest = await prisma.receiveRequest.update({
+        where: { id: requestId },
+        data: { status: 'COMPLETED' },
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              telegram: true
+            }
+          },
+          wallet: {
+            select: {
+              id: true,
+              address: true,
+              network: true,
+              type: true,
+              status: true
+            }
+          }
+        }
+      })
+
+      return NextResponse.json({
+        message: 'Баланс успешно начислен',
+        receiveRequest: updatedRequest
+      })
+    } else if (action === 'reject') {
+      // Отклонение запроса
+      const updatedRequest = await prisma.receiveRequest.update({
+        where: { id: requestId },
+        data: { status: 'REJECTED' },
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              telegram: true
+            }
+          },
+          wallet: {
+            select: {
+              id: true,
+              address: true,
+              network: true,
+              type: true,
+              status: true
+            }
+          }
+        }
+      })
+
+      return NextResponse.json({
+        message: 'Запрос отклонен',
+        receiveRequest: updatedRequest
+      })
+    } else {
+      return NextResponse.json(
+        { error: 'Неизвестное действие' },
+        { status: 400 }
+      )
+    }
   } catch (error) {
     console.error('Update receive request error:', error)
     return NextResponse.json(

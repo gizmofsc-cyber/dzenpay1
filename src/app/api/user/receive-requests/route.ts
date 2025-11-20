@@ -79,11 +79,18 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { walletId } = await request.json()
+    const { walletId, amount } = await request.json()
 
     if (!walletId) {
       return NextResponse.json(
         { error: 'ID кошелька обязателен' },
+        { status: 400 }
+      )
+    }
+
+    if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
+      return NextResponse.json(
+        { error: 'Укажите корректную сумму пополнения' },
         { status: 400 }
       )
     }
@@ -122,11 +129,39 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Проверяем лимиты кошелька
+    const walletWithLimits = await prisma.wallet.findFirst({
+      where: { id: walletId },
+      select: {
+        minAmount: true,
+        maxAmount: true
+      }
+    })
+
+    const requestedAmount = parseFloat(amount)
+    const minAmount = (walletWithLimits as any)?.minAmount
+    const maxAmount = (walletWithLimits as any)?.maxAmount
+
+    if (minAmount && requestedAmount < minAmount) {
+      return NextResponse.json(
+        { error: `Минимальная сумма пополнения: ${minAmount} USDT` },
+        { status: 400 }
+      )
+    }
+
+    if (maxAmount && requestedAmount > maxAmount) {
+      return NextResponse.json(
+        { error: `Максимальная сумма пополнения: ${maxAmount} USDT` },
+        { status: 400 }
+      )
+    }
+
     // Создаем запрос готовности к приему
     const receiveRequest = await prisma.receiveRequest.create({
       data: {
         walletId,
         userId: user.id,
+        amount: requestedAmount,
         status: 'PENDING'
       },
       include: {
