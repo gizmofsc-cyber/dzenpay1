@@ -232,10 +232,19 @@ export default function WalletsPage() {
         console.log('💼 ALL WALLETS:', data.wallets)
         console.log('💼 WITHDRAWAL WALLETS:', data.wallets.filter((w: any) => w.type === 'WITHDRAWAL'))
         console.log('💼 DEPOSIT WALLETS:', data.wallets.filter((w: any) => w.type === 'DEPOSIT'))
-        setWallets(data.wallets)
+        setWallets(data.wallets || [])
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Неизвестная ошибка' }))
+        console.error('Ошибка загрузки кошельков:', errorData)
+        toast.error(errorData.error || 'Ошибка загрузки кошельков')
+        // Устанавливаем пустой массив, чтобы не показывать старые данные
+        setWallets([])
       }
     } catch (error) {
       console.error('Ошибка загрузки кошельков:', error)
+      toast.error('Ошибка подключения к серверу')
+      // Устанавливаем пустой массив при ошибке сети
+      setWallets([])
     } finally {
       setLoading(false)
     }
@@ -1180,10 +1189,18 @@ export default function WalletsPage() {
 
         {/* Список кошельков */}
         <div className="space-y-6">
-          {/* Горизонтальное расположение блоков кошельков */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            {/* Все кошельки в одном grid - каждый кошелек - отдельная карточка */}
-            {wallets.map((wallet) => (
+          {wallets.length === 0 && !loading ? (
+            <Card>
+              <CardContent className="py-8 text-center">
+                <Wallet className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                <p className="text-gray-600">У вас пока нет кошельков</p>
+                <p className="text-sm text-gray-500 mt-2">Создайте кошелек для пополнения или вывода средств</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {/* Все кошельки в одном grid - каждый кошелек - отдельная карточка */}
+              {wallets.map((wallet) => (
               <Card key={wallet.id}>
                 <CardHeader>
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
@@ -1341,8 +1358,9 @@ export default function WalletsPage() {
                   )}
                 </CardContent>
               </Card>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {withdrawalRequests.length > 0 && (

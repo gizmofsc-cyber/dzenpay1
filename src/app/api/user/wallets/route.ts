@@ -26,61 +26,85 @@ export async function GET(request: NextRequest) {
     }
 
     // Получаем кошельки пользователя
-    const wallets = await prisma.wallet.findMany({
-      where: { userId: user.id },
-      orderBy: { createdAt: 'desc' }
-    })
+    let wallets
+    try {
+      wallets = await prisma.wallet.findMany({
+        where: { userId: user.id },
+        orderBy: { createdAt: 'desc' }
+      })
+    } catch (error) {
+      console.error('Ошибка при получении кошельков:', error)
+      return NextResponse.json(
+        { error: 'Ошибка при загрузке кошельков', wallets: [] },
+        { status: 500 }
+      )
+    }
 
-    // Для кошельков типа RECEIVE извлекаем minAmount и maxAmount из WalletRequest
-    const walletsWithLimits = await Promise.all(wallets.map(async (wallet) => {
+    // Обрабатываем кошельки и добавляем minAmount/maxAmount
+    // Сначала пытаемся получить из самого кошелька, если нет - из WalletRequest
+    const walletsWithLimits = await Promise.allSettled(wallets.map(async (wallet) => {
       try {
-        if (wallet.type === 'RECEIVE') {
-          // Находим соответствующий WalletRequest по userId, network, type и статусу APPROVED
-          const walletRequest = await prisma.walletRequest.findFirst({
-            where: {
-              userId: user.id,
-              network: wallet.network,
-              type: 'RECEIVE',
-              status: 'APPROVED'
-            },
-            orderBy: { createdAt: 'desc' }
-          })
+        // Пытаемся получить minAmount и maxAmount из самого кошелька
+        let minAmount = (wallet as any).minAmount || null
+        let maxAmount = (wallet as any).maxAmount || null
 
-          if (walletRequest?.description) {
-            // Парсим описание для извлечения minAmount и maxAmount
-            const minMatch = walletRequest.description.match(/Минимальная сумма:\s*([\d.]+)/)
-            const maxMatch = walletRequest.description.match(/Максимальная сумма:\s*([\d.]+)/)
-            
-            return {
-              ...wallet,
-              minAmount: minMatch ? parseFloat(minMatch[1]) : (wallet as any).minAmount || null,
-              maxAmount: maxMatch ? parseFloat(maxMatch[1]) : (wallet as any).maxAmount || null
+        // Если полей нет и это RECEIVE кошелек, пытаемся извлечь из WalletRequest
+        if ((!minAmount || !maxAmount) && wallet.type === 'RECEIVE') {
+          try {
+            const walletRequest = await prisma.walletRequest.findFirst({
+              where: {
+                userId: user.id,
+                network: wallet.network,
+                type: 'RECEIVE',
+                status: 'APPROVED'
+              },
+              orderBy: { createdAt: 'desc' }
+            })
+
+            if (walletRequest?.description) {
+              const minMatch = walletRequest.description.match(/Минимальная сумма:\s*([\d.]+)/)
+              const maxMatch = walletRequest.description.match(/Максимальная сумма:\s*([\d.]+)/)
+              
+              if (minMatch && !minAmount) minAmount = parseFloat(minMatch[1])
+              if (maxMatch && !maxAmount) maxAmount = parseFloat(maxMatch[1])
             }
+          } catch (requestError) {
+            console.error('Ошибка при извлечении данных из WalletRequest:', requestError)
+            // Продолжаем без этих данных
           }
         }
-        // Если есть поля в кошельке, используем их
+
         return {
           ...wallet,
-          minAmount: (wallet as any).minAmount || null,
-          maxAmount: (wallet as any).maxAmount || null
+          minAmount,
+          maxAmount
         }
       } catch (error) {
         console.error('Ошибка при обработке кошелька:', error)
         // В случае ошибки возвращаем кошелек как есть
-        return wallet
+        return {
+          ...wallet,
+          minAmount: null,
+          maxAmount: null
+        }
       }
     }))
 
+    // Фильтруем успешно обработанные кошельки
+    const processedWallets = walletsWithLimits
+      .filter((result): result is PromiseFulfilledResult<any> => result.status === 'fulfilled')
+      .map(result => result.value)
+
     // Вычисляем общую статистику
-    const totalBalance = wallets.reduce((sum, wallet) => sum + wallet.balance, 0)
-    const activeWallets = wallets.filter(wallet => wallet.status === 'ACTIVE').length
+    const totalBalance = processedWallets.reduce((sum, wallet) => sum + wallet.balance, 0)
+    const activeWallets = processedWallets.filter(wallet => wallet.status === 'ACTIVE').length
 
     return NextResponse.json({
-      wallets: walletsWithLimits,
+      wallets: processedWallets,
       statistics: {
         totalBalance,
         activeWallets,
-        totalWallets: wallets.length
+        totalWallets: processedWallets.length
       }
     })
   } catch (error) {
