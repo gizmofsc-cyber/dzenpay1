@@ -13,7 +13,7 @@
     "deploy:migrate": "node scripts/deploy-migrate.js",
     "migrate:postgres": "node scripts/migrate-to-postgres.js",
     "vercel:init": "node scripts/vercel-init.js",
-    "vercel-build": "prisma generate && node scripts/fix-and-migrate.js && next build",
+    "vercel-build": "prisma generate && node scripts/fix-and-migrate-safe.js && next build",
     "vercel-postbuild": "node scripts/vercel-init.js",
     "init-db": "node scripts/init-db.js",
     "init-network-pairs": "node scripts/init-network-pairs.js"
