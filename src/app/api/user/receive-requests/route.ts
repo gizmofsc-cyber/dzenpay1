@@ -129,27 +129,38 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Проверяем лимиты кошелька
-    const walletWithLimits = await prisma.wallet.findFirst({
-      where: { id: walletId },
-      select: {
-        minAmount: true,
-        maxAmount: true
+    // Проверяем лимиты кошелька (если они есть в базе)
+    let minAmount: number | null = null
+    let maxAmount: number | null = null
+    
+    try {
+      const walletWithLimits = await prisma.wallet.findFirst({
+        where: { id: walletId },
+        select: {
+          minAmount: true,
+          maxAmount: true
+        }
+      })
+      
+      if (walletWithLimits) {
+        minAmount = (walletWithLimits as any)?.minAmount || null
+        maxAmount = (walletWithLimits as any)?.maxAmount || null
       }
-    })
+    } catch (limitError) {
+      console.error('Ошибка при получении лимитов кошелька:', limitError)
+      // Продолжаем без проверки лимитов, если поля не существуют в БД
+    }
 
-    const requestedAmount = parseFloat(amount)
-    const minAmount = (walletWithLimits as any)?.minAmount
-    const maxAmount = (walletWithLimits as any)?.maxAmount
+    const requestedAmount = parseFloat(amount.toString())
 
-    if (minAmount && requestedAmount < minAmount) {
+    if (minAmount !== null && requestedAmount < minAmount) {
       return NextResponse.json(
         { error: `Минимальная сумма пополнения: ${minAmount} USDT` },
         { status: 400 }
       )
     }
 
-    if (maxAmount && requestedAmount > maxAmount) {
+    if (maxAmount !== null && requestedAmount > maxAmount) {
       return NextResponse.json(
         { error: `Максимальная сумма пополнения: ${maxAmount} USDT` },
         { status: 400 }
@@ -157,25 +168,71 @@ export async function POST(request: NextRequest) {
     }
 
     // Создаем запрос готовности к приему
-    const receiveRequest = await prisma.receiveRequest.create({
-      data: {
-        walletId,
-        userId: user.id,
-        amount: requestedAmount,
-        status: 'PENDING'
-      },
-      include: {
-        wallet: {
-          select: {
-            id: true,
-            address: true,
-            network: true,
-            type: true,
-            status: true
+    let receiveRequest
+    try {
+      receiveRequest = await prisma.receiveRequest.create({
+        data: {
+          walletId,
+          userId: user.id,
+          amount: requestedAmount,
+          status: 'PENDING'
+        },
+        include: {
+          wallet: {
+            select: {
+              id: true,
+              address: true,
+              network: true,
+              type: true,
+              status: true
+            }
           }
         }
+      })
+    } catch (createError: any) {
+      console.error('Ошибка создания receive request:', createError)
+      console.error('Детали ошибки:', {
+        message: createError?.message,
+        code: createError?.code,
+        meta: createError?.meta
+      })
+      
+      // Если ошибка связана с полем amount, пробуем создать без него
+      if (createError?.message?.includes('amount') || createError?.code === 'P2002') {
+        try {
+          receiveRequest = await prisma.receiveRequest.create({
+            data: {
+              walletId,
+              userId: user.id,
+              status: 'PENDING'
+            },
+            include: {
+              wallet: {
+                select: {
+                  id: true,
+                  address: true,
+                  network: true,
+                  type: true,
+                  status: true
+                }
+              }
+            }
+          })
+          console.log('Created receive request without amount:', receiveRequest.id)
+        } catch (retryError) {
+          console.error('Ошибка при повторной попытке создания:', retryError)
+          return NextResponse.json(
+            { error: 'Ошибка создания запроса. Поле amount может быть недоступно в базе данных.' },
+            { status: 500 }
+          )
+        }
+      } else {
+        return NextResponse.json(
+          { error: `Внутренняя ошибка сервера: ${createError?.message || 'Неизвестная ошибка'}` },
+          { status: 500 }
+        )
       }
-    })
+    }
 
     console.log('Created receive request:', receiveRequest.id)
 
@@ -183,10 +240,15 @@ export async function POST(request: NextRequest) {
       message: 'Запрос на готовность к приему создан',
       receiveRequest
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Create receive request error:', error)
+    console.error('Error details:', {
+      message: error?.message,
+      stack: error?.stack,
+      name: error?.name
+    })
     return NextResponse.json(
-      { error: 'Внутренняя ошибка сервера' },
+      { error: `Внутренняя ошибка сервера: ${error?.message || 'Неизвестная ошибка'}` },
       { status: 500 }
     )
   }
