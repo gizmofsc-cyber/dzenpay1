@@ -485,19 +485,18 @@ export default function WalletsPage() {
   // Используем баланс из кошелька DEPOSIT, если он есть, иначе из insuranceDepositPaid
   const actualInsuranceBalance = depositWalletBalance > 0 ? depositWalletBalance : insuranceBalance
   
-  // Суммируем балансы всех кошельков (включая DEPOSIT)
-  const walletsBalance = wallets.reduce((sum, wallet) => sum + wallet.balance, 0)
+  // Суммируем балансы только кошельков для пополнения (RECEIVE), исключая страховой (DEPOSIT) и кошельки для вывода (WITHDRAWAL)
+  const receiveWalletsBalance = wallets
+    .filter(wallet => wallet.type === 'RECEIVE')
+    .reduce((sum, wallet) => sum + wallet.balance, 0)
   
-  // Общий баланс = баланс всех кошельков + страховой депозит (если он не в кошельке)
-  // Если страховой депозит уже в кошельке DEPOSIT, не дублируем его
-  const totalBalanceWithInsurance = depositWalletBalance > 0 
-    ? walletsBalance  // Страховой уже включен в walletsBalance
-    : walletsBalance + insuranceBalance  // Добавляем страховой отдельно
+  // Суммируем балансы всех кошельков (включая DEPOSIT) для отображения
+  const walletsBalance = wallets.reduce((sum, wallet) => sum + wallet.balance, 0)
   
   const activeWallets = wallets.filter(wallet => wallet.status === 'ACTIVE').length
   
-  // Доступный баланс для вывода (весь баланс кроме страхового)
-  const availableBalance = walletsBalance - actualInsuranceBalance
+  // Доступный баланс для вывода = только баланс кошельков для пополнения (RECEIVE), без страхового депозита
+  const availableBalance = receiveWalletsBalance
 
   return (
     <Layout>
@@ -771,15 +770,15 @@ export default function WalletsPage() {
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Общий баланс</CardTitle>
+                <CardTitle className="text-sm font-medium">Доступный баланс</CardTitle>
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-green-600">
-                  {formatCurrency(totalBalanceWithInsurance)}
+                  {formatCurrency(availableBalance)}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Все кошельки + страховой депозит
+                  Доступно для вывода (без страхового депозита)
                 </p>
               </CardContent>
             </Card>
@@ -966,7 +965,7 @@ export default function WalletsPage() {
                         <p className="text-sm text-green-600 font-medium">Доступный баланс</p>
                         <p className="text-2xl font-bold text-green-800">{formatCurrency(Math.max(0, availableBalance))}</p>
                         <p className="text-xs text-gray-500 mt-1">
-                          Общий баланс: {formatCurrency(walletsBalance)} • Страховой: {formatCurrency(insuranceBalance)}
+                          Кошельки для пополнения: {formatCurrency(receiveWalletsBalance)} • Страховой: {formatCurrency(actualInsuranceBalance)}
                         </p>
                       </div>
                       <div className="text-green-600">
@@ -1591,7 +1590,7 @@ export default function WalletsPage() {
                       {formatCurrency(Math.max(0, availableBalance))}
                     </p>
                     <p className="text-xs text-gray-500 mt-1">
-                      Общий: {formatCurrency(walletsBalance)} • Страховой: {formatCurrency(insuranceBalance)}
+                      Доступно для вывода: {formatCurrency(receiveWalletsBalance)} • Страховой: {formatCurrency(actualInsuranceBalance)}
                     </p>
                   </div>
                 </div>
