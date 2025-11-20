@@ -125,6 +125,90 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const { requestId, action } = await request.json()
+
+    // Если это уведомление о внесении (action === 'paid')
+    if (action === 'paid' && requestId) {
+      const depositRequest = await prisma.depositRequest.findUnique({
+        where: { id: requestId },
+        include: {
+          user: {
+            select: {
+              email: true,
+              telegram: true
+            }
+          }
+        }
+      })
+
+      if (!depositRequest) {
+        return NextResponse.json(
+          { error: 'Запрос не найден' },
+          { status: 404 }
+        )
+      }
+
+      if (depositRequest.userId !== user.id) {
+        return NextResponse.json(
+          { error: 'Доступ запрещен' },
+          { status: 403 }
+        )
+      }
+
+      // Обновляем статус запроса на PROCESSING, чтобы админ увидел уведомление
+      await prisma.depositRequest.update({
+        where: { id: requestId },
+        data: {
+          status: 'PROCESSING'
+        }
+      })
+
+      return NextResponse.json({
+        message: 'Уведомление отправлено администратору'
+      })
+    }
+
+    // Создание нового запроса на пополнение
+    const { amount, fromNetwork, toNetwork } = await request.json()
+
+    if (!amount || !fromNetwork || !toNetwork) {
+      return NextResponse.json(
+        { error: 'Сумма и сети обязательны' },
+        { status: 400 }
+      )
+    }
+
+    if (amount <= 0) {
+      return NextResponse.json(
+        { error: 'Сумма должна быть больше 0' },
+        { status: 400 }
+      )
+    }
+
+    // Находим доступный кошелек админа для пополнения
+    const adminWallet = await prisma.wallet.findFirst({
+      where: {
+        type: 'DEPOSIT',
+        status: 'ACTIVE',
+        network: fromNetwork
+      },
+      include: {
+        user: {
+          select: {
+            email: true,
+            telegram: true
+          }
+        }
+      }
+    })
+
+    if (!adminWallet) {
+      return NextResponse.json(
+        { error: `Нет доступных кошельков для сети ${fromNetwork}` },
+        { status: 400 }
+      )
+    }
+
     // Создаем запрос пополнения
     const depositRequest = await prisma.depositRequest.create({
       data: {

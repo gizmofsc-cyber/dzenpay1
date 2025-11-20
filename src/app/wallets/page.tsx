@@ -477,13 +477,27 @@ export default function WalletsPage() {
     }
   }
 
-  const totalBalance = wallets.reduce((sum, wallet) => sum + wallet.balance, 0)
+  // Страховой баланс может храниться в кошельке типа DEPOSIT или в поле insuranceDepositPaid
+  const depositWallet = wallets.find(w => w.type === 'DEPOSIT')
+  const depositWalletBalance = depositWallet?.balance || 0
   const insuranceBalance = insuranceDeposit?.insuranceDepositPaid || 0
-  const totalBalanceWithInsurance = totalBalance + insuranceBalance
+  
+  // Используем баланс из кошелька DEPOSIT, если он есть, иначе из insuranceDepositPaid
+  const actualInsuranceBalance = depositWalletBalance > 0 ? depositWalletBalance : insuranceBalance
+  
+  // Суммируем балансы всех кошельков (включая DEPOSIT)
+  const walletsBalance = wallets.reduce((sum, wallet) => sum + wallet.balance, 0)
+  
+  // Общий баланс = баланс всех кошельков + страховой депозит (если он не в кошельке)
+  // Если страховой депозит уже в кошельке DEPOSIT, не дублируем его
+  const totalBalanceWithInsurance = depositWalletBalance > 0 
+    ? walletsBalance  // Страховой уже включен в walletsBalance
+    : walletsBalance + insuranceBalance  // Добавляем страховой отдельно
+  
   const activeWallets = wallets.filter(wallet => wallet.status === 'ACTIVE').length
   
   // Доступный баланс для вывода (весь баланс кроме страхового)
-  const availableBalance = totalBalance - insuranceBalance
+  const availableBalance = walletsBalance - actualInsuranceBalance
 
   return (
     <Layout>
@@ -520,6 +534,17 @@ export default function WalletsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
+              <div className="mb-4 p-3 bg-blue-100 rounded-lg border border-blue-200">
+                <p className="text-sm text-blue-800 mb-2">
+                  <strong>Информация:</strong> В ближайшее время администратор установит необходимую для пополнения сумму.
+                </p>
+                <p className="text-xs text-blue-700">
+                  Если у вас есть вопросы, обратитесь в{' '}
+                  <a href="/support" className="underline font-medium">чат с поддержкой</a>
+                  {' '}или в{' '}
+                  <a href="https://t.me/alltimez" target="_blank" rel="noopener noreferrer" className="underline font-medium">Telegram</a>.
+                </p>
+              </div>
               <div className="space-y-4">
                 {depositRequests
                   .filter(request => !confirmedDepositRequests.has(request.id))
@@ -561,14 +586,47 @@ export default function WalletsPage() {
                     </div>
 
                     {request.status === 'PROCESSING' && request.adminWalletAddress && (
-                      <div className="mt-3 p-3 bg-blue-100 rounded-lg">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <AlertTriangle className="h-4 w-4 text-blue-600" />
-                          <span className="font-medium text-blue-800">Требуется пополнение</span>
+                      <div className="mt-3 space-y-3">
+                        <div className="p-3 bg-blue-100 rounded-lg">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <AlertTriangle className="h-4 w-4 text-blue-600" />
+                            <span className="font-medium text-blue-800">Требуется пополнение</span>
+                          </div>
+                          <p className="text-sm text-blue-700">
+                            Администратор назначил кошелек для пополнения. Переведите средства на указанный адрес.
+                          </p>
                         </div>
-                        <p className="text-sm text-blue-700">
-                          Администратор назначил кошелек для пополнения. Переведите средства на указанный адрес.
-                        </p>
+                        <Button
+                          onClick={async () => {
+                            try {
+                              const response = await fetch('/api/user/deposit-requests', {
+                                method: 'POST',
+                                headers: {
+                                  'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                  requestId: request.id,
+                                  action: 'paid'
+                                }),
+                              })
+
+                              if (response.ok) {
+                                toast.success('Уведомление отправлено администратору!')
+                                await fetchDepositRequests()
+                              } else {
+                                const errorData = await response.json()
+                                toast.error(errorData.error || 'Ошибка отправки уведомления')
+                              }
+                            } catch (error) {
+                              console.error('Ошибка отправки уведомления:', error)
+                              toast.error('Ошибка отправки уведомления')
+                            }
+                          }}
+                          className="w-full bg-green-600 hover:bg-green-700 text-white"
+                        >
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          Внес
+                        </Button>
                       </div>
                     )}
 

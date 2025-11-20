@@ -159,6 +159,10 @@ export default function AdminPanel() {
   const [showReceiveNotification, setShowReceiveNotification] = useState(false)
   const [newReceiveRequest, setNewReceiveRequest] = useState<any>(null)
   const [previousReceiveRequestsCount, setPreviousReceiveRequestsCount] = useState(0)
+  const [showDepositNotification, setShowDepositNotification] = useState(false)
+  const [newDepositRequest, setNewDepositRequest] = useState<any>(null)
+  const [previousDepositRequestsCount, setPreviousDepositRequestsCount] = useState(0)
+  const [processedDepositRequestIds, setProcessedDepositRequestIds] = useState<Set<string>>(new Set())
   const [activeTab, setActiveTab] = useState<'users' | 'wallets' | 'tokens' | 'wallet-requests' | 'network-pairs' | 'stats' | 'metrics' | 'insurance-deposits' | 'withdrawal-requests' | 'networks' | 'support'>('users')
   const [showAddWalletModal, setShowAddWalletModal] = useState(false)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
@@ -474,13 +478,27 @@ export default function AdminPanel() {
     
     // Устанавливаем начальное количество запросов после загрузки
     setTimeout(() => {
-      const initialCount = receiveRequests.filter((req: any) => req.status === 'PENDING' || req.status === 'PROCESSING').length
-      setPreviousReceiveRequestsCount(initialCount)
+      const initialReceiveCount = receiveRequests.filter((req: any) => req.status === 'PENDING' || req.status === 'PROCESSING').length
+      setPreviousReceiveRequestsCount(initialReceiveCount)
+      
+      const initialDepositCount = depositRequests.filter((req: any) => req.status === 'PROCESSING').length
+      setPreviousDepositRequestsCount(initialDepositCount)
+      
+      // Инициализируем список обработанных запросов
+      const processedIds = new Set<string>()
+      depositRequests.forEach((req: any) => {
+        if (req.status === 'PROCESSING') {
+          processedIds.add(req.id)
+        }
+      })
+      setProcessedDepositRequestIds(processedIds)
     }, 1000)
   }, [])
 
   // Периодическая проверка новых запросов на пополнение
   useEffect(() => {
+    const processedRequestIds = new Set<string>()
+    
     const checkNewRequests = async () => {
       try {
         const response = await fetch('/api/admin/receive-requests')
@@ -490,13 +508,26 @@ export default function AdminPanel() {
           const pendingRequests = newRequests.filter((req: any) => req.status === 'PENDING' || req.status === 'PROCESSING')
           const currentCount = pendingRequests.length
           
-          if (currentCount > previousReceiveRequestsCount && previousReceiveRequestsCount >= 0) {
-            // Появился новый запрос
-            const newestRequest = pendingRequests[0] // Самый новый запрос
-            setNewReceiveRequest(newestRequest)
+          // Находим новые запросы, которые еще не были показаны
+          const newRequest = pendingRequests.find((req: any) => 
+            !processedRequestIds.has(req.id) && 
+            (req.status === 'PENDING' || req.status === 'PROCESSING')
+          )
+          
+          if (newRequest && !showReceiveNotification) {
+            // Появился новый запрос, который еще не был показан
+            setNewReceiveRequest(newRequest)
             setShowReceiveNotification(true)
+            processedRequestIds.add(newRequest.id)
             setReceiveRequests(newRequests)
           }
+          
+          // Обновляем список обработанных запросов
+          pendingRequests.forEach((req: any) => {
+            if (req.status === 'COMPLETED' || req.status === 'REJECTED') {
+              processedRequestIds.delete(req.id)
+            }
+          })
           
           setPreviousReceiveRequestsCount(currentCount)
         }
@@ -509,7 +540,44 @@ export default function AdminPanel() {
     const interval = setInterval(checkNewRequests, 5000)
     
     return () => clearInterval(interval)
-  }, [previousReceiveRequestsCount])
+  }, [showReceiveNotification])
+
+  // Периодическая проверка новых уведомлений о внесении страховых взносов
+  useEffect(() => {
+    const checkNewDepositRequests = async () => {
+      try {
+        const response = await fetch('/api/admin/deposit-requests')
+        if (response.ok) {
+          const data = await response.json()
+          const newRequests = data.requests || []
+          const processingRequests = newRequests.filter((req: any) => req.status === 'PROCESSING')
+          const currentCount = processingRequests.length
+          
+          // Находим новые запросы со статусом PROCESSING, которые еще не были показаны
+          const newRequest = processingRequests.find((req: any) => 
+            !processedDepositRequestIds.has(req.id)
+          )
+          
+          if (newRequest && !showDepositNotification && currentCount > previousDepositRequestsCount) {
+            // Появился новый запрос о внесении, который еще не был показан
+            setNewDepositRequest(newRequest)
+            setShowDepositNotification(true)
+            setProcessedDepositRequestIds(prev => new Set([...prev, newRequest.id]))
+            setDepositRequests(newRequests)
+          }
+          
+          setPreviousDepositRequestsCount(currentCount)
+        }
+      } catch (error) {
+        console.error('Ошибка проверки новых запросов на страховые взносы:', error)
+      }
+    }
+
+    // Проверяем каждые 5 секунд
+    const interval = setInterval(checkNewDepositRequests, 5000)
+    
+    return () => clearInterval(interval)
+  }, [showDepositNotification, previousDepositRequestsCount, processedDepositRequestIds])
 
   const handleActivateUser = async (userId: string) => {
     try {
@@ -3975,6 +4043,78 @@ export default function AdminPanel() {
                 onClick={() => {
                   setShowReceiveNotification(false)
                   setNewReceiveRequest(null)
+                }}
+                variant="outline"
+                className="w-full sm:w-auto border-gray-600 text-gray-300 hover:bg-gray-800"
+              >
+                Закрыть
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Уведомление о внесении страхового взноса */}
+      {showDepositNotification && newDepositRequest && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900 border-2 border-green-500 rounded-lg shadow-2xl w-full max-w-md p-6">
+            <div className="flex items-center space-x-3 mb-4">
+              <Shield className="h-8 w-8 text-green-500 animate-pulse" />
+              <h3 className="text-2xl font-bold text-white">Страховой взнос внесен!</h3>
+            </div>
+            
+            <div className="space-y-4 mb-6">
+              <div className="p-4 bg-green-900/20 rounded-lg border border-green-500/30">
+                <p className="text-lg font-semibold text-white mb-2">
+                  Пользователь внес страховой взнос
+                </p>
+                <p className="text-sm text-gray-300">
+                  <span className="font-medium">Пользователь:</span> {newDepositRequest.user?.email || 'Не указан'} {newDepositRequest.user?.telegram && `(@${newDepositRequest.user.telegram})`}
+                </p>
+                <p className="text-sm text-gray-300 mt-1">
+                  <span className="font-medium">Сеть:</span> {newDepositRequest.fromNetwork}
+                </p>
+                {newDepositRequest.adminWalletAddress && (
+                  <p className="text-sm text-gray-300 mt-1">
+                    <span className="font-medium">Адрес для проверки:</span>
+                    <div className="font-mono text-xs bg-gray-800 p-2 rounded mt-1 break-all">
+                      {newDepositRequest.adminWalletAddress}
+                    </div>
+                  </p>
+                )}
+                {newDepositRequest.amount > 0 && (
+                  <p className="text-lg font-bold text-green-400 mt-2">
+                    💰 Сумма: {newDepositRequest.amount} USDT
+                  </p>
+                )}
+              </div>
+              
+              <div className="p-3 bg-blue-900/30 rounded-lg border border-blue-500/30">
+                <p className="text-sm text-blue-300">
+                  <strong>⚠️ Проверьте транзакцию на указанном адресе!</strong>
+                </p>
+                <p className="text-xs text-gray-400 mt-1">
+                  После проверки установите сумму и завершите запрос в разделе "Страховые депозиты"
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row sm:justify-end space-y-2 sm:space-y-0 sm:space-x-3">
+              <Button
+                onClick={() => {
+                  setShowDepositNotification(false)
+                  setNewDepositRequest(null)
+                  // Переключаемся на вкладку страховых депозитов
+                  setActiveTab('insurance-deposits')
+                }}
+                className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white"
+              >
+                Перейти к страховым депозитам
+              </Button>
+              <Button
+                onClick={() => {
+                  setShowDepositNotification(false)
+                  setNewDepositRequest(null)
                 }}
                 variant="outline"
                 className="w-full sm:w-auto border-gray-600 text-gray-300 hover:bg-gray-800"
