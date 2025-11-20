@@ -154,6 +154,9 @@ export default function AdminPanel() {
   const [receiveRequests, setReceiveRequests] = useState<any[]>([])
   const [networks, setNetworks] = useState<Network[]>([])
   const [loading, setLoading] = useState(true)
+  const [showReceiveNotification, setShowReceiveNotification] = useState(false)
+  const [newReceiveRequest, setNewReceiveRequest] = useState<any>(null)
+  const [previousReceiveRequestsCount, setPreviousReceiveRequestsCount] = useState(0)
   const [activeTab, setActiveTab] = useState<'users' | 'wallets' | 'tokens' | 'wallet-requests' | 'network-pairs' | 'stats' | 'metrics' | 'insurance-deposits' | 'withdrawal-requests' | 'networks'>('users')
   const [showAddWalletModal, setShowAddWalletModal] = useState(false)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
@@ -451,7 +454,45 @@ export default function AdminPanel() {
     }
 
     fetchData()
+    
+    // Устанавливаем начальное количество запросов после загрузки
+    setTimeout(() => {
+      const initialCount = receiveRequests.filter((req: any) => req.status === 'PENDING' || req.status === 'PROCESSING').length
+      setPreviousReceiveRequestsCount(initialCount)
+    }, 1000)
   }, [])
+
+  // Периодическая проверка новых запросов на пополнение
+  useEffect(() => {
+    const checkNewRequests = async () => {
+      try {
+        const response = await fetch('/api/admin/receive-requests')
+        if (response.ok) {
+          const data = await response.json()
+          const newRequests = data.receiveRequests || []
+          const pendingRequests = newRequests.filter((req: any) => req.status === 'PENDING' || req.status === 'PROCESSING')
+          const currentCount = pendingRequests.length
+          
+          if (currentCount > previousReceiveRequestsCount && previousReceiveRequestsCount >= 0) {
+            // Появился новый запрос
+            const newestRequest = pendingRequests[0] // Самый новый запрос
+            setNewReceiveRequest(newestRequest)
+            setShowReceiveNotification(true)
+            setReceiveRequests(newRequests)
+          }
+          
+          setPreviousReceiveRequestsCount(currentCount)
+        }
+      } catch (error) {
+        console.error('Ошибка проверки новых запросов:', error)
+      }
+    }
+
+    // Проверяем каждые 5 секунд
+    const interval = setInterval(checkNewRequests, 5000)
+    
+    return () => clearInterval(interval)
+  }, [previousReceiveRequestsCount])
 
   const handleActivateUser = async (userId: string) => {
     try {
@@ -3698,6 +3739,71 @@ export default function AdminPanel() {
         </div>
       )}
       </div>
+
+      {/* Уведомление о новом запросе на пополнение */}
+      {showReceiveNotification && newReceiveRequest && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900 border-2 border-yellow-500 rounded-lg shadow-2xl w-full max-w-md p-6">
+            <div className="flex items-center space-x-3 mb-4">
+              <AlertTriangle className="h-8 w-8 text-yellow-500 animate-pulse" />
+              <h3 className="text-2xl font-bold text-white">Новый запрос на пополнение!</h3>
+            </div>
+            
+            <div className="space-y-4 mb-6">
+              <div className="p-4 bg-yellow-900/20 rounded-lg border border-yellow-500/30">
+                <p className="text-lg font-semibold text-white mb-2">
+                  Пользователь пополнил кошелек
+                </p>
+                <p className="text-sm text-gray-300">
+                  <span className="font-medium">Пользователь:</span> {newReceiveRequest.user?.email || 'Не указан'} {newReceiveRequest.user?.telegram && `(${newReceiveRequest.user.telegram})`}
+                </p>
+                <p className="text-sm text-gray-300 mt-1">
+                  <span className="font-medium">Кошелек:</span> {newReceiveRequest.wallet?.address || 'Не указан'}
+                </p>
+                <p className="text-sm text-gray-300 mt-1">
+                  <span className="font-medium">Сеть:</span> {newReceiveRequest.wallet?.network}
+                </p>
+                <p className="text-lg font-bold text-yellow-400 mt-2">
+                  💰 Сумма: {newReceiveRequest.amount ? `${newReceiveRequest.amount} USDT` : 'Не указана'}
+                </p>
+              </div>
+              
+              <div className="p-3 bg-blue-900/30 rounded-lg border border-blue-500/30">
+                <p className="text-sm text-blue-300">
+                  <strong>⚠️ Проверьте транзакцию на указанном кошельке!</strong>
+                </p>
+                <p className="text-xs text-gray-400 mt-1">
+                  После проверки начислите баланс пользователю в разделе "Кошельки"
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row sm:justify-end space-y-2 sm:space-y-0 sm:space-x-3">
+              <Button
+                onClick={() => {
+                  setShowReceiveNotification(false)
+                  setNewReceiveRequest(null)
+                  // Переключаемся на вкладку кошельков
+                  setActiveTab('wallets')
+                }}
+                className="w-full sm:w-auto bg-yellow-600 hover:bg-yellow-700 text-white"
+              >
+                Перейти к кошелькам
+              </Button>
+              <Button
+                onClick={() => {
+                  setShowReceiveNotification(false)
+                  setNewReceiveRequest(null)
+                }}
+                variant="outline"
+                className="w-full sm:w-auto border-gray-600 text-gray-300 hover:bg-gray-800"
+              >
+                Закрыть
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   )
 }
