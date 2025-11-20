@@ -40,6 +40,8 @@ interface Wallet {
   status: string
   dailyLimit: number | null
   monthlyLimit: number | null
+  minAmount: number | null
+  maxAmount: number | null
   balance: number
   lastChecked: string | null
   createdAt: string
@@ -1247,17 +1249,37 @@ export default function WalletsPage() {
 
                   {/* Лимиты - только для RECEIVE и DEPOSIT */}
                   {(wallet.type === 'RECEIVE' || wallet.type === 'DEPOSIT') && (
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label className="text-sm font-medium">Дневной лимит</Label>
-                        <div className="text-lg font-semibold">
-                          {wallet.dailyLimit ? formatCurrency(wallet.dailyLimit) : 'Не установлен'}
+                    <div className="space-y-4">
+                      {/* Минимальная и максимальная сумма - только для RECEIVE */}
+                      {wallet.type === 'RECEIVE' && (wallet.minAmount || wallet.maxAmount) && (
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label className="text-sm font-medium">Минимальная сумма</Label>
+                            <div className="text-lg font-semibold">
+                              {wallet.minAmount ? formatCurrency(wallet.minAmount) : 'Не установлена'}
+                            </div>
+                          </div>
+                          <div>
+                            <Label className="text-sm font-medium">Максимальная сумма</Label>
+                            <div className="text-lg font-semibold">
+                              {wallet.maxAmount ? formatCurrency(wallet.maxAmount) : 'Не установлена'}
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                      <div>
-                        <Label className="text-sm font-medium">Месячный лимит</Label>
-                        <div className="text-lg font-semibold">
-                          {wallet.monthlyLimit ? formatCurrency(wallet.monthlyLimit) : 'Не установлен'}
+                      )}
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-sm font-medium">Дневной лимит</Label>
+                          <div className="text-lg font-semibold">
+                            {wallet.dailyLimit ? formatCurrency(wallet.dailyLimit) : 'Не установлен'}
+                          </div>
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium">Месячный лимит</Label>
+                          <div className="text-lg font-semibold">
+                            {wallet.monthlyLimit ? formatCurrency(wallet.monthlyLimit) : 'Не установлен'}
+                          </div>
                         </div>
                       </div>
                     </div>

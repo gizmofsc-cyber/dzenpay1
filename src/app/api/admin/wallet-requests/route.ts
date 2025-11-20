@@ -171,6 +171,22 @@ export async function PATCH(request: NextRequest) {
         )
       }
 
+      // Извлекаем данные из description для RECEIVE типа
+      let dailyLimit: number | null = null
+      let minAmount: number | null = null
+      let maxAmount: number | null = null
+      
+      if (walletRequest.type === 'RECEIVE' && walletRequest.description) {
+        // Парсим описание: "Тип: Для пополнения, Минимальная сумма: 111 USDT, Максимальная сумма: 111 USDT, Дневной лимит: 111 USDT"
+        const minMatch = walletRequest.description.match(/Минимальная сумма:\s*([\d.]+)/)
+        const maxMatch = walletRequest.description.match(/Максимальная сумма:\s*([\d.]+)/)
+        const dailyMatch = walletRequest.description.match(/Дневной лимит:\s*([\d.]+)/)
+        
+        if (minMatch) minAmount = parseFloat(minMatch[1])
+        if (maxMatch) maxAmount = parseFloat(maxMatch[1])
+        if (dailyMatch) dailyLimit = parseFloat(dailyMatch[1])
+      }
+
       const newWallet = await prisma.wallet.create({
         data: {
           address: finalWalletAddress,
@@ -178,7 +194,10 @@ export async function PATCH(request: NextRequest) {
           type: walletRequest.type,
           userId: walletRequest.userId,
           status: 'ACTIVE',
-          balance: 0
+          balance: 0,
+          dailyLimit,
+          minAmount,
+          maxAmount
         }
       })
 

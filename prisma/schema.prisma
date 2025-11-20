@@ -45,6 +45,8 @@ model Wallet {
   status      String       @default("ACTIVE") // "ACTIVE", "INACTIVE", "IN_WORK" (для кошельков вывода в работе)
   dailyLimit  Float?
   monthlyLimit Float?
+  minAmount   Float?       // Минимальная сумма для пополнения
+  maxAmount   Float?       // Максимальная сумма для пополнения
   balance     Float        @default(0)
   lastChecked DateTime?
   userId      String
