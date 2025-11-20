@@ -159,8 +159,8 @@ export async function PATCH(request: NextRequest) {
 
     // Если запрос одобрен, создаем кошелек
     if (action === 'APPROVED') {
-      // Для кошельков пополнения адрес должен быть передан отдельно
-      const finalWalletAddress = walletRequest.type === 'DEPOSIT' 
+      // Для кошельков пополнения и приема адрес должен быть передан отдельно (назначает админ)
+      const finalWalletAddress = (walletRequest.type === 'DEPOSIT' || walletRequest.type === 'RECEIVE')
         ? walletAddress 
         : walletRequest.address
 

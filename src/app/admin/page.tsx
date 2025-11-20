@@ -170,6 +170,7 @@ export default function AdminPanel() {
   const [showWalletSettingsModal, setShowWalletSettingsModal] = useState(false)
   const [selectedWalletRequest, setSelectedWalletRequest] = useState<WalletRequest | null>(null)
   const [approveWalletAddress, setApproveWalletAddress] = useState('')
+  const [walletRequestAddresses, setWalletRequestAddresses] = useState<Record<string, string>>({})
   const [showUserDetailsModal, setShowUserDetailsModal] = useState(false)
   const [showEditNetworkPairModal, setShowEditNetworkPairModal] = useState(false)
   const [selectedNetworkPair, setSelectedNetworkPair] = useState<NetworkPair | null>(null)
@@ -720,13 +721,18 @@ export default function AdminPanel() {
     const request = walletRequests.find(r => r.id === requestId)
     if (!request) return
 
-    if (action === 'APPROVED' && request.type === 'DEPOSIT') {
-      // Для кошельков пополнения показываем модальное окно для ввода адреса
-      setSelectedWalletRequest(request)
-      setApproveWalletAddress('')
-      setShowApproveModal(true)
+    if (action === 'APPROVED' && (request.type === 'DEPOSIT' || request.type === 'RECEIVE')) {
+      // Для кошельков пополнения и приема нужен адрес
+      const address = walletRequestAddresses[requestId] || request.address || ''
+      
+      if (!address.trim()) {
+        alert('Введите адрес кошелька')
+        return
+      }
+      
+      await processWalletRequest(requestId, action, address.trim())
     } else {
-      // Для кошельков приема или отклонения обрабатываем сразу
+      // Для отклонения обрабатываем сразу
       await processWalletRequest(requestId, action, null)
     }
   }
@@ -1630,7 +1636,9 @@ export default function AdminPanel() {
                               request.status === 'APPROVED' ? 'bg-green-500' : 'bg-red-500'
                             }`} />
                             <div>
-                              <p className="font-medium text-white">{request.address}</p>
+                              <p className="font-medium text-white">
+                                {request.address || (request.type === 'RECEIVE' ? 'Адрес не указан (назначит админ)' : 'Адрес не указан')}
+                              </p>
                               <p className="text-sm text-gray-400">
                                 {request.network} • {new Date(request.createdAt).toLocaleDateString('ru-RU')}
                               </p>
@@ -1662,7 +1670,32 @@ export default function AdminPanel() {
                               </div>
                             )}
                             
-                            <div className="flex items-center space-x-2">
+                            {/* Поле для ввода адреса кошелька для RECEIVE и DEPOSIT */}
+                            {request.status === 'PENDING' && (request.type === 'RECEIVE' || request.type === 'DEPOSIT') && (
+                              <div className="mt-3 p-3 bg-gray-900/50 rounded-lg border border-gray-600">
+                                <Label htmlFor={`wallet-address-${request.id}`} className="text-sm font-medium text-gray-300 mb-2 block">
+                                  Адрес кошелька {request.type === 'RECEIVE' ? '(для пополнения)' : '(для приема)'}
+                                </Label>
+                                <Input
+                                  id={`wallet-address-${request.id}`}
+                                  type="text"
+                                  value={walletRequestAddresses[request.id] || request.address || ''}
+                                  onChange={(e) => setWalletRequestAddresses(prev => ({
+                                    ...prev,
+                                    [request.id]: e.target.value
+                                  }))}
+                                  placeholder="Введите адрес кошелька"
+                                  className="bg-gray-800 border-gray-600 text-white placeholder-gray-500"
+                                />
+                                <p className="text-xs text-gray-400 mt-1">
+                                  {request.type === 'RECEIVE' 
+                                    ? 'Админ назначает адрес кошелька для пополнения' 
+                                    : 'Адрес кошелька для приема средств'}
+                                </p>
+                              </div>
+                            )}
+                            
+                            <div className="flex items-center space-x-2 mt-2">
                               <Badge className={getStatusColor(request.status)}>
                                 {getStatusText(request.status)}
                               </Badge>
