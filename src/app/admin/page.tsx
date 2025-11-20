@@ -562,7 +562,11 @@ export default function AdminPanel() {
             // Появился новый запрос о внесении, который еще не был показан
             setNewDepositRequest(newRequest)
             setShowDepositNotification(true)
-            setProcessedDepositRequestIds(prev => new Set([...prev, newRequest.id]))
+            setProcessedDepositRequestIds(prev => {
+              const newSet = new Set(prev)
+              newSet.add(newRequest.id)
+              return newSet
+            })
             setDepositRequests(newRequests)
           }
           
