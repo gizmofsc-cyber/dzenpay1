@@ -92,10 +92,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Для кошельков приема и вывода адрес обязателен
-    if ((type === 'RECEIVE' || type === 'WITHDRAWAL') && !address) {
+    // Для кошельков вывода адрес обязателен
+    // Для кошельков пополнения (RECEIVE) адрес не обязателен - его назначит админ
+    if (type === 'WITHDRAWAL' && !address) {
       return NextResponse.json(
-        { error: 'Адрес обязателен для кошельков приема и вывода' },
+        { error: 'Адрес обязателен для кошельков вывода' },
         { status: 400 }
       )
     }

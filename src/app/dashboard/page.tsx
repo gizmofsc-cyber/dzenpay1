@@ -108,10 +108,15 @@ export default function DashboardPage() {
       const response = await fetch('/api/network-pairs')
       if (response.ok) {
         const data = await response.json()
-        setNetworkPairs(data.networkPairs)
+        console.log('Загружены сетевые пары:', data.networkPairs)
+        setNetworkPairs(data.networkPairs || [])
+      } else {
+        console.error('Ошибка ответа API:', response.status)
+        setNetworkPairs([])
       }
     } catch (error) {
       console.error('Ошибка загрузки сетевых пар:', error)
+      setNetworkPairs([])
     }
   }
 
@@ -373,49 +378,68 @@ export default function DashboardPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {networkPairs.map((pair, index) => (
-                  <div
-                    key={index}
-                    className={`p-4 border rounded-lg transition-all duration-300 ${
-                      pair.isActive 
-                        ? 'status-active hover-glow' 
-                        : 'status-inactive'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="font-medium text-white">
-                          {pair.fromNetwork.displayName} ↔ {pair.toNetwork.displayName}
-                        </h3>
-                        <p className="text-sm text-gray-300">
-                          Доходность: <span className="text-green-400 font-semibold">{pair.profitPercent}%</span>
-                        </p>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        {pair.isActive ? (
-                          <span className="status-active px-2.5 py-0.5 rounded-full text-xs font-medium">
-                            Активна
-                          </span>
-                        ) : (
-                          <span className="status-inactive px-2.5 py-0.5 rounded-full text-xs font-medium">
-                            Неактивна
-                          </span>
-                        )}
-                        {pair.isActive && (
-                          <Button
-                            size="sm"
-                            onClick={() => handleSelectPair(pair)}
-                            className="neon-button"
-                          >
-                            Выбрать
-                          </Button>
-                        )}
+              {loading ? (
+                <div className="space-y-4">
+                  {[...Array(2)].map((_, i) => (
+                    <div key={i} className="p-4 border rounded-lg animate-pulse bg-gray-800/50">
+                      <div className="h-4 bg-gray-700 rounded w-3/4 mb-2"></div>
+                      <div className="h-3 bg-gray-700 rounded w-1/2"></div>
+                    </div>
+                  ))}
+                </div>
+              ) : networkPairs.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="w-12 h-12 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <TrendingUp className="h-6 w-6 text-gray-600" />
+                  </div>
+                  <p className="text-gray-400 mb-2">Нет доступных связок сетей</p>
+                  <p className="text-sm text-gray-500">Связки сетей будут отображаться здесь после их создания администратором</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {networkPairs.map((pair, index) => (
+                    <div
+                      key={pair.id || index}
+                      className={`p-4 border rounded-lg transition-all duration-300 ${
+                        pair.isActive 
+                          ? 'status-active hover-glow' 
+                          : 'status-inactive'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="font-medium text-white">
+                            {pair.fromNetwork?.displayName || pair.fromNetwork?.name} ↔ {pair.toNetwork?.displayName || pair.toNetwork?.name}
+                          </h3>
+                          <p className="text-sm text-gray-300">
+                            Доходность: <span className="text-green-400 font-semibold">{pair.profitPercent}%</span>
+                          </p>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          {pair.isActive ? (
+                            <span className="status-active px-2.5 py-0.5 rounded-full text-xs font-medium">
+                              Активна
+                            </span>
+                          ) : (
+                            <span className="status-inactive px-2.5 py-0.5 rounded-full text-xs font-medium">
+                              Неактивна
+                            </span>
+                          )}
+                          {pair.isActive && (
+                            <Button
+                              size="sm"
+                              onClick={() => handleSelectPair(pair)}
+                              className="neon-button"
+                            >
+                              Выбрать
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 

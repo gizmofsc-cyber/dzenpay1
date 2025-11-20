@@ -233,6 +233,24 @@ export default function AdminPanel() {
     fee: ''
   })
 
+  // Функция загрузки сетевых пар
+  const fetchNetworkPairs = async () => {
+    try {
+      const networkPairsResponse = await fetch('/api/admin/network-pairs')
+      if (networkPairsResponse.ok) {
+        const networkPairsData = await networkPairsResponse.json()
+        setNetworkPairs(networkPairsData.networkPairs || [])
+      } else {
+        const errorData = await networkPairsResponse.json()
+        console.error('Ошибка загрузки сетевых пар:', errorData)
+        setNetworkPairs([])
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки сетевых пар:', error)
+      setNetworkPairs([])
+    }
+  }
+
   // Функция для обновления данных
   const refreshData = async () => {
     try {
@@ -346,18 +364,7 @@ export default function AdminPanel() {
 
         // Загружаем сетевые пары
         console.log('Загружаем сетевые пары...')
-        const networkPairsResponse = await fetch('/api/admin/network-pairs')
-        console.log('Ответ сетевых пар:', networkPairsResponse.status, networkPairsResponse.ok)
-        
-        if (networkPairsResponse.ok) {
-          const networkPairsData = await networkPairsResponse.json()
-          console.log('Данные сетевых пар:', networkPairsData)
-          setNetworkPairs(networkPairsData.networkPairs || [])
-        } else {
-          const errorData = await networkPairsResponse.json()
-          console.error('Ошибка загрузки сетевых пар:', errorData)
-          setNetworkPairs([])
-        }
+        await fetchNetworkPairs()
 
         // Загружаем страховые депозиты
         console.log('Загружаем страховые депозиты...')
@@ -791,17 +798,14 @@ export default function AdminPanel() {
       })
 
       if (response.ok) {
-        // Обновляем локальное состояние
-        setNetworkPairs(prev => prev.map(pair => 
-          pair.id === selectedNetworkPair.id 
-            ? { ...pair, profitPercent: parseFloat(networkPairForm.profitPercent), isActive: networkPairForm.isActive }
-            : pair
-        ))
         setShowEditNetworkPairModal(false)
         setSelectedNetworkPair(null)
+        toast.success('Сетевая пара обновлена')
+        // Перезагружаем список сетевых пар
+        await fetchNetworkPairs()
       } else {
         const errorData = await response.json()
-        alert(`Ошибка: ${errorData.error}`)
+        toast.error(`Ошибка: ${errorData.error}`)
       }
     } catch (error) {
       console.error('Ошибка обновления сетевой пары:', error)
@@ -1258,7 +1262,6 @@ export default function AdminPanel() {
 
       if (response.ok) {
         const data = await response.json()
-        setNetworkPairs(prev => [data.networkPair, ...prev])
         setShowCreateNetworkPairModal(false)
         setCreateNetworkPairForm({
           fromNetworkId: '',
@@ -1271,6 +1274,8 @@ export default function AdminPanel() {
           useCustomToNetwork: false
         })
         toast.success(data.message)
+        // Перезагружаем список сетевых пар
+        await fetchNetworkPairs()
       } else {
         const errorData = await response.json()
         toast.error(`Ошибка: ${errorData.error}`)
