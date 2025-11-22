@@ -24,7 +24,8 @@ import {
   X,
   Shield,
   AlertTriangle,
-  HelpCircle
+  HelpCircle,
+  Trash2
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -1020,6 +1021,30 @@ export default function AdminPanel() {
     } catch (error) {
       console.error('Ошибка обновления сетевой пары:', error)
       alert('Ошибка обновления сетевой пары')
+    }
+  }
+
+  const handleDeleteNetworkPair = async (pairId: string, pairName: string) => {
+    if (!confirm(`Вы уверены, что хотите удалить сетевую пару "${pairName}"?`)) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/admin/network-pairs?id=${pairId}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        toast.success('Сетевая пара удалена')
+        // Перезагружаем список сетевых пар
+        await fetchNetworkPairs()
+      } else {
+        const errorData = await response.json()
+        toast.error(`Ошибка: ${errorData.error}`)
+      }
+    } catch (error) {
+      console.error('Ошибка удаления сетевой пары:', error)
+      toast.error('Ошибка удаления сетевой пары')
     }
   }
 
@@ -2148,6 +2173,15 @@ export default function AdminPanel() {
                         >
                           <Settings className="h-4 w-4 mr-2" />
                           Редактировать
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleDeleteNetworkPair(pair.id, `${pair.fromNetwork.displayName} ↔ ${pair.toNetwork.displayName}`)}
+                          className="w-full md:w-auto"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Удалить
                         </Button>
                       </div>
                     </div>
