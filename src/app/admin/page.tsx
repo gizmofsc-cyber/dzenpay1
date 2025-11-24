@@ -469,8 +469,8 @@ export default function AdminPanel() {
           console.log('Данные сетей:', networksData)
           const allNetworks = networksData.networks || []
           setNetworks(allNetworks)
-          // Инициализируем активные сети из всех загруженных
-          setActiveNetworks(allNetworks.filter((n: Network) => n.isActive))
+          // Инициализируем активные сети из всех загруженных, только действительно активные
+          setActiveNetworks(allNetworks.filter((n: Network) => n.isActive === true))
         } else {
           const errorData = await networksResponse.json()
           console.error('Ошибка загрузки сетей:', errorData)
@@ -753,16 +753,27 @@ export default function AdminPanel() {
     
     // Загружаем только активные сети для выпадающего списка
     try {
-      const networksResponse = await fetch('/api/admin/networks?activeOnly=true')
+      const networksResponse = await fetch('/api/admin/networks?activeOnly=true', {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      })
       if (networksResponse.ok) {
         const networksData = await networksResponse.json()
         // Сохраняем активные сети отдельно для выпадающих списков
-        setActiveNetworks(networksData.networks || [])
+        // Фильтруем только те сети, которые действительно активны
+        const trulyActiveNetworks = (networksData.networks || []).filter((n: Network) => n.isActive === true)
+        setActiveNetworks(trulyActiveNetworks)
+        console.log('Загружены активные сети:', trulyActiveNetworks)
+      } else {
+        console.error('Ошибка загрузки активных сетей:', await networksResponse.json())
+        setActiveNetworks([])
       }
     } catch (error) {
       console.error('Ошибка загрузки активных сетей:', error)
-      // Если ошибка, используем фильтрацию из всех сетей
-      setActiveNetworks(networks.filter(n => n.isActive))
+      // Если ошибка, используем фильтрацию из всех сетей, но только действительно активные
+      setActiveNetworks(networks.filter((n: Network) => n.isActive === true))
     }
     
     setShowAddWalletModal(true)

@@ -21,12 +21,49 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const activeOnly = searchParams.get('activeOnly') === 'true'
 
-    const networks = await prisma.network.findMany({
-      where: activeOnly ? { isActive: true } : undefined,
-      orderBy: {
-        createdAt: 'desc'
-      }
-    })
+    let networks
+
+    if (activeOnly) {
+      // Получаем только сети, которые используются в активных сетевых парах
+      const activeNetworkPairs = await prisma.networkPair.findMany({
+        where: {
+          isActive: true
+        },
+        include: {
+          fromNetwork: true,
+          toNetwork: true
+        }
+      })
+
+      // Собираем уникальные ID сетей из активных пар
+      const networkIds = new Set<string>()
+      activeNetworkPairs.forEach(pair => {
+        if (pair.fromNetwork.isActive) {
+          networkIds.add(pair.fromNetworkId)
+        }
+        if (pair.toNetwork.isActive) {
+          networkIds.add(pair.toNetworkId)
+        }
+      })
+
+      // Получаем только эти сети
+      networks = await prisma.network.findMany({
+        where: {
+          id: { in: Array.from(networkIds) },
+          isActive: true
+        },
+        orderBy: {
+          createdAt: 'desc'
+        }
+      })
+    } else {
+      // Возвращаем все сети
+      networks = await prisma.network.findMany({
+        orderBy: {
+          createdAt: 'desc'
+        }
+      })
+    }
 
     return NextResponse.json({ networks })
   } catch (error) {
