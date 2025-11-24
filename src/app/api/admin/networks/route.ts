@@ -17,11 +17,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Получаем только активные сети
+    // Проверяем, нужны ли только активные сети (для выпадающих списков)
+    const { searchParams } = new URL(request.url)
+    const activeOnly = searchParams.get('activeOnly') === 'true'
+
     const networks = await prisma.network.findMany({
-      where: {
-        isActive: true
-      },
+      where: activeOnly ? { isActive: true } : undefined,
       orderBy: {
         createdAt: 'desc'
       }

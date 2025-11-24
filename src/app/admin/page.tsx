@@ -156,6 +156,7 @@ export default function AdminPanel() {
   const [receiveRequests, setReceiveRequests] = useState<any[]>([])
   const [supportTickets, setSupportTickets] = useState<any[]>([])
   const [networks, setNetworks] = useState<Network[]>([])
+  const [activeNetworks, setActiveNetworks] = useState<Network[]>([])
   const [loading, setLoading] = useState(true)
   const [showReceiveNotification, setShowReceiveNotification] = useState(false)
   const [newReceiveRequest, setNewReceiveRequest] = useState<any>(null)
@@ -466,7 +467,10 @@ export default function AdminPanel() {
         if (networksResponse.ok) {
           const networksData = await networksResponse.json()
           console.log('Данные сетей:', networksData)
-          setNetworks(networksData.networks || [])
+          const allNetworks = networksData.networks || []
+          setNetworks(allNetworks)
+          // Инициализируем активные сети из всех загруженных
+          setActiveNetworks(allNetworks.filter(n => n.isActive))
         } else {
           const errorData = await networksResponse.json()
           console.error('Ошибка загрузки сетей:', errorData)
@@ -746,16 +750,21 @@ export default function AdminPanel() {
       maxAmount: '',
       dailyLimit: ''
     })
-    // Обновляем список сетей перед открытием модального окна
+    
+    // Загружаем только активные сети для выпадающего списка
     try {
-      const networksResponse = await fetch('/api/admin/networks')
+      const networksResponse = await fetch('/api/admin/networks?activeOnly=true')
       if (networksResponse.ok) {
         const networksData = await networksResponse.json()
-        setNetworks(networksData.networks || [])
+        // Сохраняем активные сети отдельно для выпадающих списков
+        setActiveNetworks(networksData.networks || [])
       }
     } catch (error) {
-      console.error('Ошибка загрузки сетей:', error)
+      console.error('Ошибка загрузки активных сетей:', error)
+      // Если ошибка, используем фильтрацию из всех сетей
+      setActiveNetworks(networks.filter(n => n.isActive))
     }
+    
     setShowAddWalletModal(true)
   }
 
@@ -1342,9 +1351,26 @@ export default function AdminPanel() {
               ? data.network
               : network
           ))
+          // Обновляем активные сети
+          setActiveNetworks(prev => {
+            if (data.network.isActive) {
+              // Если сеть стала активной, добавляем или обновляем её
+              const exists = prev.find(n => n.id === data.network.id)
+              return exists 
+                ? prev.map(n => n.id === data.network.id ? data.network : n)
+                : [data.network, ...prev]
+            } else {
+              // Если сеть стала неактивной, удаляем её из активных
+              return prev.filter(n => n.id !== data.network.id)
+            }
+          })
         } else {
           // Добавляем новую сеть
           setNetworks(prev => [data.network, ...prev])
+          // Если новая сеть активна, добавляем её в активные
+          if (data.network.isActive) {
+            setActiveNetworks(prev => [data.network, ...prev])
+          }
         }
         setShowNetworkModal(false)
         setSelectedNetwork(null)
@@ -1377,6 +1403,7 @@ export default function AdminPanel() {
       if (response.ok) {
         const data = await response.json()
         setNetworks(prev => prev.filter(network => network.id !== networkId))
+        setActiveNetworks(prev => prev.filter(network => network.id !== networkId))
         toast.success(data.message)
       } else {
         const errorData = await response.json()
@@ -1455,6 +1482,10 @@ export default function AdminPanel() {
           const networkData = await networkResponse.json()
           finalFromNetworkId = networkData.network.id
           setNetworks(prev => [networkData.network, ...prev])
+          // Если новая сеть активна, добавляем её в активные
+          if (networkData.network.isActive) {
+            setActiveNetworks(prev => [networkData.network, ...prev])
+          }
         } else {
           const errorData = await networkResponse.json()
           toast.error(`Ошибка создания исходной сети: ${errorData.error}`)
@@ -1478,6 +1509,10 @@ export default function AdminPanel() {
           const networkData = await networkResponse.json()
           finalToNetworkId = networkData.network.id
           setNetworks(prev => [networkData.network, ...prev])
+          // Если новая сеть активна, добавляем её в активные
+          if (networkData.network.isActive) {
+            setActiveNetworks(prev => [networkData.network, ...prev])
+          }
         } else {
           const errorData = await networkResponse.json()
           toast.error(`Ошибка создания целевой сети: ${errorData.error}`)
@@ -2921,8 +2956,8 @@ export default function AdminPanel() {
                     onChange={(e) => setWalletForm(prev => ({ ...prev, network: e.target.value }))}
                     className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
                   >
-                    {networks.filter(n => n.isActive).length > 0 ? (
-                      networks.filter(n => n.isActive).map((network) => (
+                    {activeNetworks.length > 0 ? (
+                      activeNetworks.map((network) => (
                         <option key={network.id} value={network.name}>
                           {network.displayName || network.name}
                         </option>
@@ -3012,8 +3047,8 @@ export default function AdminPanel() {
                     onChange={(e) => setWalletForm(prev => ({ ...prev, network: e.target.value }))}
                     className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
                   >
-                    {networks.filter(n => n.isActive).length > 0 ? (
-                      networks.filter(n => n.isActive).map((network) => (
+                    {activeNetworks.length > 0 ? (
+                      activeNetworks.map((network) => (
                         <option key={network.id} value={network.name}>
                           {network.displayName || network.name}
                         </option>
