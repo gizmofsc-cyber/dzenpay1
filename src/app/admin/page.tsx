@@ -735,7 +735,7 @@ export default function AdminPanel() {
     }
   }
 
-  const handleAddWallet = (user: User) => {
+  const handleAddWallet = async (user: User) => {
     setSelectedUser(user)
     setWalletTypeSelection('select')
     setWalletForm({ 
@@ -746,6 +746,16 @@ export default function AdminPanel() {
       maxAmount: '',
       dailyLimit: ''
     })
+    // Обновляем список сетей перед открытием модального окна
+    try {
+      const networksResponse = await fetch('/api/admin/networks')
+      if (networksResponse.ok) {
+        const networksData = await networksResponse.json()
+        setNetworks(networksData.networks || [])
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки сетей:', error)
+    }
     setShowAddWalletModal(true)
   }
 

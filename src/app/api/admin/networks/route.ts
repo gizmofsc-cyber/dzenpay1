@@ -17,7 +17,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Получаем только активные сети
     const networks = await prisma.network.findMany({
+      where: {
+        isActive: true
+      },
       orderBy: {
         createdAt: 'desc'
       }
