@@ -470,7 +470,7 @@ export default function AdminPanel() {
           const allNetworks = networksData.networks || []
           setNetworks(allNetworks)
           // Инициализируем активные сети из всех загруженных
-          setActiveNetworks(allNetworks.filter(n => n.isActive))
+          setActiveNetworks(allNetworks.filter((n: Network) => n.isActive))
         } else {
           const errorData = await networksResponse.json()
           console.error('Ошибка загрузки сетей:', errorData)
